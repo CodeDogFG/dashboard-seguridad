@@ -22,3 +22,14 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# # Environment variables - CRÍTICO para seguridad
+.env
+.env.local
+.env.production
+.env.staging
+.env.test
+.env.*.local
+
+
+

@@ -2,13 +2,22 @@
 
 ## Project Architecture
 
-This is a **security dashboard** project with a Vue 3 + TypeScript frontend and planned backend integration. The project is structured as a monorepo with separate `frontend/` and `backend/` directories.
+This is a **security metrics dashboard** project for analyzing domains, emails, and IPs through external security APIs. The monorepo structure separates `frontend/` and `backend/` directories with different tech stacks.
 
 ### Frontend Stack
 - **Vue 3** with Composition API (`<script setup>`)
 - **TypeScript** with strict configuration
 - **Vite** with rolldown bundler (`rolldown-vite@7.1.14`)
 - **CSS** with native CSS variables and light/dark theme support
+- **Status**: Components are placeholder files - most `.vue` files are empty
+
+### Backend Stack
+- **Node.js** with Express.js (`^5.1.0`)  
+- **CommonJS** module system (`"type": "commonjs"`)
+- **Redis** for caching with cache-aside pattern
+- **axios** for external API calls
+- **dotenv** for environment configuration
+- **CORS** enabled for cross-origin requests
 
 ## Key Development Patterns
 
@@ -38,7 +47,7 @@ Key compiler options include strict mode, unused variable checking, and `erasabl
 
 ## Development Workflow
 
-### Commands
+### Frontend Commands (in `frontend/` directory)
 ```bash
 # Development server
 npm run dev
@@ -50,33 +59,89 @@ npm run build  # Runs vue-tsc -b && vite build
 npm run preview
 ```
 
-### Build Process
-The build process includes TypeScript type checking (`vue-tsc -b`) before Vite bundling, ensuring type safety in production builds.
+### Backend Architecture
+- **Server**: `src/server.js` - Express setup with Redis integration and single `/api/analyze` endpoint
+- **Controllers**: `src/controllers/securityController.js` - Orchestrates security service calls
+- **Services**: Three external API integrations:
+  - `src/services/virusTotalService.js` - Domain reputation analysis
+  - `src/services/abuseIpService.js` - IP abuse detection
+  - `src/services/shodanService.js` - IP port scanning (uses free InternetDB API)
+- **Caching**: Redis cache-aside pattern with configurable TTL (default 1 hour)
+
+### Critical Workflow Patterns
+
+**Backend Development:**
+```bash
+# Start backend (requires Redis running)
+cd backend && node src/server.js
+
+# Test API endpoint
+curl -X POST http://localhost:5000/api/analyze \
+  -H "Content-Type: application/json" \
+  -d '{"type":"domain","value":"example.com"}'
+```
+
+**Frontend Development:**
+```bash
+cd frontend && npm run dev  # Vite dev server with HMR
+npm run build              # TypeScript check + Vite build
+```
+
+**Environment Setup:**
+Backend requires `.env` file with API keys:
+```
+VIRUSTOTAL_API_KEY=your_key_here
+ABUSEIPDB_API_KEY=your_key_here
+REDIS_URL=redis://localhost:6379
+PORT=5000
+CORS_ORIGIN=http://localhost:8080
+```
 
 ## Project-Specific Conventions
 
 ### File Organization
-- `/src/components/` - Reusable Vue components
-- `/src/assets/` - Static assets bundled by Vite
-- `/public/` - Static assets served directly
+**Frontend:**
+- `frontend/src/components/` - Reusable Vue components
+- `frontend/src/assets/` - Static assets bundled by Vite
+- `frontend/public/` - Static assets served directly
 - Components use PascalCase naming (e.g., `HelloWorld.vue`)
 
-### Security Context
-This is a **security dashboard** application, so when implementing features:
-- Consider data sensitivity and access control patterns
-- Implement proper input validation and sanitization
-- Follow security best practices for dashboard interfaces
-- Plan for potential backend integration with security APIs
+**Backend:**
+- `backend/src/controllers/` - Request orchestration (security analysis logic)
+- `backend/src/services/` - External API integrations (VirusTotal, AbuseIPDB, Shodan)
+- `backend/src/server.js` - Single-endpoint design with Redis caching middleware
+
+### Security API Integration
+Active external API integrations with proper error handling:
+- **VirusTotal** - Domain reputation analysis (`getDomainReport`)
+- **AbuseIPDB** - IP reputation with 90-day lookback (`getIpReport`)
+- **Shodan InternetDB** - Free IP port scanning (no API key required)
+- **Email Analysis** - Extracts domain from email addresses for VirusTotal analysis
+
+### Module Systems
+- **Frontend**: ES Modules (`"type": "module"`)
+- **Backend**: CommonJS (`"type": "commonjs"`)
 
 ### IDE Setup
 Requires Vue Language Features (Volar) extension for proper Vue 3 + TypeScript support.
 
-## Next Steps for Development
+## Critical Integration Points
 
-The `backend/` directory is currently empty, indicating this project will likely need:
-- Backend API integration
-- Authentication/authorization systems  
-- Security data visualization components
-- Real-time dashboard updates
+### Frontend-Backend Communication
+- Frontend (ES Modules + TypeScript) communicates with backend (CommonJS + JavaScript)
+- Backend acts as secure API proxy to avoid exposing external API keys
+- **Implemented** Redis caching with cache-aside pattern and configurable TTL
+- Single POST endpoint `/api/analyze` handles all analysis types (`domain`, `ip`, `email`)
 
-When implementing new features, maintain the existing patterns of strict TypeScript, composition API, and scoped component architecture.
+**Cache-Aside Pattern Example:**
+```javascript
+// Backend caching workflow in /api/analyze
+const cacheKey = `security-scan:${type}:${value}`;
+const cachedResult = await redisClient.get(cacheKey);
+if (cachedResult) return JSON.parse(cachedResult);
+
+const freshData = await securityController.analyze(type, value);
+await redisClient.set(cacheKey, JSON.stringify(freshData), { EX: CACHE_TTL });
+```
+
+When implementing new features, maintain separation of concerns: frontend focuses on visualization, backend handles secure API orchestration.
