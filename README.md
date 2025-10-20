@@ -9,20 +9,20 @@ Un panel de control moderno para análisis de métricas de seguridad que permite
 
 ## 📋 Tabla de Contenidos
 
-- [🚀 Características](#-características)
-- [🏗️ Arquitectura](#️-arquitectura)
-- [📦 Instalación](#-instalación)
-- [🔧 Configuración](#-configuración)
-- [💻 Uso](#-uso)
-- [🔌 APIs Integradas](#-apis-integradas)
-- [🛠️ Desarrollo](#️-desarrollo)
-- [📚 Documentación](#-documentación)
-- [🤝 Contribuir](#-contribuir)
-- [📄 Licencia](#-licencia)
+- [Características](#-características)
+- [Arquitectura](#️-arquitectura)
+- [Instalación](#-instalación)
+- [Configuración](#-configuración)
+- [Uso](#-uso)
+- [APIs Integradas](#-apis-integradas)
+- [Desarrollo](#️-desarrollo)
+- [Documentación](#-documentación)
+- [Contribuir](#-contribuir)
+- [Licencia](#-licencia)
 
-## 🚀 Características
+## Características
 
-### ✨ Frontend Moderno
+### Frontend
 - **Vue 3** con Composition API y `<script setup>`
 - **TypeScript** con configuración estricta
 - **Vite** con bundler Rolldown para desarrollo ultrarrápido
@@ -30,7 +30,7 @@ Un panel de control moderno para análisis de métricas de seguridad que permite
 - **Diseño responsive** con tema claro/oscuro automático
 - **Interfaz intuitiva** para análisis de seguridad
 
-### 🔧 Backend Robusto
+### Backend
 - **Node.js + Express** para API REST escalable
 - **Arquitectura orientada a servicios** para integración con APIs externas
 - **Redis** para caché inteligente y mejora de rendimiento
@@ -69,7 +69,7 @@ dashboard-seguridad/
 └── 📄 README.md
 ```
 
-## 📦 Instalación
+## Instalación
 
 ### Prerrequisitos
 
@@ -93,7 +93,7 @@ cd ../frontend
 npm install
 ```
 
-## 🔧 Configuración
+## Configuración
 
 ### 1. Variables de Entorno del Backend
 
@@ -151,7 +151,7 @@ sudo apt install redis-server
 docker run -d -p 6379:6379 redis:alpine
 ```
 
-## 💻 Uso
+## Uso
 
 ### Desarrollo
 
