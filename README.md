@@ -45,7 +45,7 @@ Un panel de control moderno para análisis de métricas de seguridad que permite
 - **Múltiples fuentes**: VirusTotal, AbuseIPDB, Shodan
 - **Resultados consolidados** con scoring de riesgo
 
-## 🏗️ Arquitectura
+## Arquitectura
 
 ```
 dashboard-seguridad/
