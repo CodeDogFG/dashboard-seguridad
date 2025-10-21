@@ -6,15 +6,16 @@ This is a **security metrics dashboard** project for analyzing domains, emails, 
 
 ### Frontend Stack
 - **Vue 3** with Composition API (`<script setup>`)
-- **TypeScript** with strict configuration
+- **TypeScript** with strict configuration (`erasableSyntaxOnly` for performance)
 - **Vite** with rolldown bundler (`rolldown-vite@7.1.14`)
-- **CSS** with native CSS variables and light/dark theme support
-- **Status**: Components are placeholder files - most `.vue` files are empty
+- **Chart.js + vue-chartjs** for data visualization (Line, Doughnut, Bar charts)
+- **CSS** with native CSS variables and automatic light/dark theme support
+- **Status**: Main components implemented but need real API integration
 
 ### Backend Stack
 - **Node.js** with Express.js (`^5.1.0`)  
 - **CommonJS** module system (`"type": "commonjs"`)
-- **Redis** for caching with cache-aside pattern
+- **Redis** for caching with cache-aside pattern (required for startup)
 - **axios** for external API calls
 - **dotenv** for environment configuration
 - **CORS** enabled for cross-origin requests
@@ -60,41 +61,46 @@ npm run preview
 ```
 
 ### Backend Architecture
-- **Server**: `src/server.js` - Express setup with Redis integration and single `/api/analyze` endpoint
-- **Controllers**: `src/controllers/securityController.js` - Orchestrates security service calls
-- **Services**: Three external API integrations:
-  - `src/services/virusTotalService.js` - Domain reputation analysis
-  - `src/services/abuseIpService.js` - IP abuse detection
-  - `src/services/shodanService.js` - IP port scanning (uses free InternetDB API)
-- **Caching**: Redis cache-aside pattern with configurable TTL (default 1 hour)
+- **Server**: `src/server.js` - Express setup with Redis connection requirement
+- **Routes**: `src/routes/api.js` - Single `/api/analyze` endpoint with caching logic
+- **Controllers**: `src/controllers/securityController.js` - Analysis orchestration (legacy `analyze()` function)
+- **Config**: `src/config/redisClient.js` - Redis connection management and export
+- **Services**: Three fully implemented external API integrations:
+  - `src/services/virusTotalService.js` - Domains/IPs with rate limiting and risk scoring
+  - `src/services/abuseIpService.js` - IP reputation with 90-day lookback
+  - `src/services/shodanService.js` - IP ports/vulns (InternetDB fallback, API key optional)
+- **Caching**: Redis cache-aside pattern with configurable TTL (1 hour default)
 
 ### Critical Workflow Patterns
 
 **Backend Development:**
-```bash
-# Start backend (requires Redis running)
-cd backend && node src/server.js
+```powershell
+# Start backend (Redis must be running first!)
+cd backend; node src/server.js
 
-# Test API endpoint
-curl -X POST http://localhost:5000/api/analyze \
-  -H "Content-Type: application/json" \
-  -d '{"type":"domain","value":"example.com"}'
+# Test all endpoints with PowerShell script
+./test-api.ps1
+
+# Manual API test
+Invoke-RestMethod -Uri "http://localhost:5000/api/analyze" -Method Post -ContentType "application/json" -Body '{"type":"domain","value":"example.com"}'
 ```
 
 **Frontend Development:**
 ```bash
-cd frontend && npm run dev  # Vite dev server with HMR
+cd frontend && npm run dev  # Vite dev server with HMR on port 5173
 npm run build              # TypeScript check + Vite build
 ```
 
 **Environment Setup:**
-Backend requires `.env` file with API keys:
-```
+Backend requires `.env` file with API keys (AbuseIP_API_KEY uses underscore!):
+```env
 VIRUSTOTAL_API_KEY=your_key_here
-ABUSEIPDB_API_KEY=your_key_here
+AbuseIP_API_KEY=your_key_here  # Note: underscore, not dash
+SHODAN_API_KEY=your_key_here   # Optional - falls back to InternetDB
 REDIS_URL=redis://localhost:6379
 PORT=5000
-CORS_ORIGIN=http://localhost:8080
+CORS_ORIGIN=http://localhost:5173  # Note: 5173, not 8080
+CACHE_TTL_SECONDS=3600
 ```
 
 ## Project-Specific Conventions
@@ -113,10 +119,12 @@ CORS_ORIGIN=http://localhost:8080
 
 ### Security API Integration
 Active external API integrations with proper error handling:
-- **VirusTotal** - Domain reputation analysis (`getDomainReport`)
-- **AbuseIPDB** - IP reputation with 90-day lookback (`getIpReport`)
-- **Shodan InternetDB** - Free IP port scanning (no API key required)
-- **Email Analysis** - Extracts domain from email addresses for VirusTotal analysis
+- **VirusTotal** - Domain/IP reputation with risk scoring (`calculateRiskScore` method)
+- **AbuseIPDB** - IP reputation with 90-day lookback and risk levels
+- **Shodan** - Dual API: paid API with InternetDB fallback (always works)
+- **Email Analysis** - Domain extraction for VirusTotal analysis
+- **Rate Limiting**: All services handle 429 errors gracefully
+- **Fallback Strategy**: Shodan automatically falls back to free InternetDB
 
 ### Module Systems
 - **Frontend**: ES Modules (`"type": "module"`)
@@ -143,5 +151,10 @@ if (cachedResult) return JSON.parse(cachedResult);
 const freshData = await securityController.analyze(type, value);
 await redisClient.set(cacheKey, JSON.stringify(freshData), { EX: CACHE_TTL });
 ```
+
+**Critical Startup Requirements:**
+- Redis must be running before backend starts (server.js calls `connectRedis()`)
+- Frontend expects backend on port 5000, frontend dev server on 5173
+- All external services have error handling for missing API keys
 
 When implementing new features, maintain separation of concerns: frontend focuses on visualization, backend handles secure API orchestration.

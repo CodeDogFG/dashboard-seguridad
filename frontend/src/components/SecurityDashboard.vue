@@ -34,7 +34,22 @@ interface AnalysisResult {
   value: string
   timestamp: string
   riskScore: number
-  details: any
+  details: {
+    entity: string
+    type: string
+    timestamp: string
+    services: {
+      virusTotal?: any
+      abuseIP?: any
+      shodan?: any
+    }
+    summary: {
+      risk_score: number
+      risk_level: string
+      threats_detected: number
+    }
+    extracted_domain?: string
+  }
   recommendations: string[]
 }
 
@@ -78,9 +93,9 @@ const analyzeEntity = async () => {
       type: formData.type,
       value: formData.value.trim(),
       timestamp: new Date().toISOString(),
-      riskScore: response.data.riskScore || 0,
-      details: response.data,
-      recommendations: response.data.recommendations || []
+      riskScore: response.data.data?.summary?.risk_score || 0,
+      details: response.data.data || response.data,
+      recommendations: response.data.data?.recommendations || []
     }
 
     analysisResults.value.unshift(result)
@@ -90,7 +105,15 @@ const analyzeEntity = async () => {
     formData.value = ''
   } catch (err: any) {
     console.error('Error al analizar:', err)
-    error.value = err.response?.data?.error || 'Error al conectar con el servidor'
+    if (err.response?.status === 400) {
+      error.value = err.response.data.message || 'Datos de entrada inválidos'
+    } else if (err.response?.status === 500) {
+      error.value = 'Error interno del servidor. Por favor, inténtalo de nuevo.'
+    } else if (err.code === 'ECONNREFUSED') {
+      error.value = 'No se puede conectar al servidor backend. ¿Está ejecutándose en el puerto 5000?'
+    } else {
+      error.value = err.response?.data?.error || 'Error al conectar con el servidor'
+    }
   } finally {
     isLoading.value = false
   }
@@ -146,15 +169,27 @@ const updateCharts = () => {
   const mediumRisk = analysisResults.value.filter(r => r.riskScore >= 30 && r.riskScore < 70).length
   const highRisk = analysisResults.value.filter(r => r.riskScore >= 70).length
   
-  if (chartData.value.riskDistribution.datasets[0]) {
-    chartData.value.riskDistribution.datasets[0].data = [lowRisk, mediumRisk, highRisk]
+  // Recrear completamente el objeto para forzar reactividad
+  chartData.value.riskDistribution = {
+    labels: ['Bajo Riesgo', 'Riesgo Medio', 'Alto Riesgo'],
+    datasets: [{
+      data: [lowRisk, mediumRisk, highRisk],
+      backgroundColor: ['#10B981', '#F59E0B', '#EF4444'],
+      borderWidth: 0
+    }]
   }
 
   // Historial de análisis (últimos 10)
   const recentResults = analysisResults.value.slice(0, 10).reverse()
-  chartData.value.analysisHistory.labels = recentResults.map((_, index) => `#${index + 1}`)
-  if (chartData.value.analysisHistory.datasets[0]) {
-    chartData.value.analysisHistory.datasets[0].data = recentResults.map(r => r.riskScore)
+  chartData.value.analysisHistory = {
+    labels: recentResults.map((_, index) => `#${index + 1}`),
+    datasets: [{
+      label: 'Puntuación de Riesgo',
+      data: recentResults.map(r => r.riskScore),
+      borderColor: '#6366F1',
+      backgroundColor: 'rgba(99, 102, 241, 0.1)',
+      tension: 0.4
+    }]
   }
 
   // Tipos de entidades
@@ -162,8 +197,13 @@ const updateCharts = () => {
   const ips = analysisResults.value.filter(r => r.type === 'ip').length
   const emails = analysisResults.value.filter(r => r.type === 'email').length
   
-  if (chartData.value.entityTypes.datasets[0]) {
-    chartData.value.entityTypes.datasets[0].data = [domains, ips, emails]
+  chartData.value.entityTypes = {
+    labels: ['Dominios', 'IPs', 'Emails'],
+    datasets: [{
+      label: 'Análisis por Tipo',
+      data: [domains, ips, emails],
+      backgroundColor: ['#3B82F6', '#8B5CF6', '#06B6D4']
+    }]
   }
 }
 
@@ -253,7 +293,7 @@ $watch(successMessage, clearMessages)
 
         <button type="submit" class="analyze-btn" :disabled="isLoading">
           <span v-if="isLoading">🔄 Analizando...</span>
-          <span v-else>🚀 Analizar</span>
+          <span v-else>Analizar</span>
         </button>
       </form>
 
@@ -268,22 +308,6 @@ $watch(successMessage, clearMessages)
 
     <!-- Resultados y gráficos -->
     <div class="results-section" v-if="analysisResults.length > 0">
-      <!-- Estadísticas generales -->
-      <div class="stats-grid">
-        <div class="stat-card">
-          <h3>{{ analysisResults.length }}</h3>
-          <p>Análisis Realizados</p>
-        </div>
-        <div class="stat-card">
-          <h3>{{ Math.round(analysisResults.reduce((acc, r) => acc + r.riskScore, 0) / analysisResults.length) }}</h3>
-          <p>Riesgo Promedio</p>
-        </div>
-        <div class="stat-card">
-          <h3>{{ analysisResults.filter(r => r.riskScore >= 70).length }}</h3>
-          <p>Alertas Críticas</p>
-        </div>
-      </div>
-
       <!-- Gráficos -->
       <div class="charts-grid">
         <div class="chart-container">
@@ -310,7 +334,7 @@ $watch(successMessage, clearMessages)
 
       <!-- Lista de resultados -->
       <div class="results-list">
-        <h3>📊 Resultados Recientes</h3>
+        <h3>Resultados Recientes</h3>
         <div class="results-grid">
           <div 
             v-for="result in analysisResults.slice(0, 6)" 
@@ -329,6 +353,36 @@ $watch(successMessage, clearMessages)
             <div class="result-value">{{ result.value }}</div>
             <div class="result-status" :style="{ color: getRiskColor(result.riskScore) }">
               {{ getRiskLabel(result.riskScore) }}
+            </div>
+            <div class="result-services" v-if="result.details?.services">
+              <small>
+                Servicios: 
+                <span v-if="result.details.services.virusTotal" class="service-tag">VT</span>
+                <span v-if="result.details.services.abuseIP" class="service-tag">AIPDB</span>
+                <span v-if="result.details.services.shodan" class="service-tag">Shodan</span>
+              </small>
+            </div>
+            <!-- Categorías de AbuseIPDB -->
+            <div class="result-categories" v-if="result.details?.services?.abuseIP?.categories?.length > 0">
+              <small>
+                🏷️ Categorías: 
+                <span 
+                  v-for="category in result.details.services.abuseIP.categories.slice(0, 2)" 
+                  :key="category.id"
+                  class="category-tag"
+                  :class="`severity-${category.severity}`"
+                >
+                  {{ category.name }}
+                </span>
+                <span v-if="result.details.services.abuseIP.categories.length > 2" class="category-more">
+                  +{{ result.details.services.abuseIP.categories.length - 2 }} más
+                </span>
+              </small>
+            </div>
+            <div class="result-threats" v-if="result.details?.summary?.threats_detected > 0">
+              <small :style="{ color: '#EF4444' }">
+                🚨 {{ result.details.summary.threats_detected }} amenaza(s) detectada(s)
+              </small>
             </div>
             <div class="result-time">
               {{ new Date(result.timestamp).toLocaleString() }}
@@ -420,7 +474,7 @@ $watch(successMessage, clearMessages)
 
 .analyze-btn {
   padding: 0.75rem 1.5rem;
-  background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
+  background: linear-gradient(135deg, #01039e 0%, #8B5CF6 100%);
   color: white;
   border: none;
   border-radius: 8px;
@@ -465,35 +519,6 @@ $watch(successMessage, clearMessages)
   display: flex;
   flex-direction: column;
   gap: 2rem;
-}
-
-/* Estadísticas */
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
-}
-
-.stat-card {
-  background: white;
-  padding: 1.5rem;
-  border-radius: 12px;
-  text-align: center;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-  border: 1px solid rgba(0, 0, 0, 0.05);
-}
-
-.stat-card h3 {
-  font-size: 2rem;
-  font-weight: 700;
-  color: #1F2937;
-  margin-bottom: 0.5rem;
-}
-
-.stat-card p {
-  color: #6B7280;
-  font-size: 0.9rem;
-  font-weight: 500;
 }
 
 /* Gráficos */
@@ -594,6 +619,55 @@ $watch(successMessage, clearMessages)
   margin-bottom: 0.5rem;
 }
 
+.result-services {
+  margin-bottom: 0.5rem;
+}
+
+.service-tag {
+  background: #E5E7EB;
+  color: #374151;
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  margin-right: 0.25rem;
+}
+
+.result-categories {
+  margin-bottom: 0.5rem;
+}
+
+.category-tag {
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  margin-right: 0.25rem;
+  color: white;
+}
+
+.category-tag.severity-high {
+  background: #EF4444; /* Rojo para alta severidad */
+}
+
+.category-tag.severity-medium {
+  background: #F59E0B; /* Amarillo para severidad media */
+}
+
+.category-tag.severity-low {
+  background: #6B7280; /* Gris para baja severidad */
+}
+
+.category-more {
+  color: #6B7280;
+  font-style: italic;
+  font-size: 0.65rem;
+}
+
+.result-threats {
+  margin-bottom: 0.5rem;
+}
+
 .result-time {
   color: #6B7280;
   font-size: 0.8rem;
@@ -631,16 +705,11 @@ $watch(successMessage, clearMessages)
   .results-grid {
     grid-template-columns: 1fr;
   }
-  
-  .stats-grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 /* Tema oscuro */
 @media (prefers-color-scheme: dark) {
   .analysis-panel,
-  .stat-card,
   .chart-container,
   .results-list {
     background: #1F2937;
@@ -648,7 +717,6 @@ $watch(successMessage, clearMessages)
   }
   
   .panel-header h2,
-  .stat-card h3,
   .chart-container h3,
   .results-list h3,
   .result-value {
@@ -656,7 +724,6 @@ $watch(successMessage, clearMessages)
   }
   
   .panel-header p,
-  .stat-card p,
   .result-time {
     color: #D1D5DB;
   }
@@ -683,6 +750,11 @@ $watch(successMessage, clearMessages)
   }
   
   .result-type {
+    background: #4B5563;
+    color: #E5E7EB;
+  }
+  
+  .service-tag {
     background: #4B5563;
     color: #E5E7EB;
   }

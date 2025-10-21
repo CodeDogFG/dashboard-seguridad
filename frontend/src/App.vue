@@ -40,7 +40,7 @@ onMounted(() => {
 
 <style scoped>
 .app-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #000276 0%, #8000ff 100%);
   color: white;
   padding: 2rem 0;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);

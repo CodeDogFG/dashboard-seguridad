@@ -1,82 +1,61 @@
-/**// backend/src/services/abuseIpService.js
-
+﻿/**
  * @file abuseIpService.js
-
- * @description Servicio para integración con la API de AbuseIPDB.const axios = require('axios');
-
- * Proporciona métodos para verificar la reputación de direcciones IP.
-
- */const ABUSEIPDB_API_URL = 'https://api.abuseipdb.com/api/v2/check';
-
-const ABUSEIPDB_API_KEY = process.env.ABUSEIPDB_API_KEY;
+ * @description Servicio para integración con la API de AbuseIPDB.
+ */
 
 const axios = require('axios');
 
-/**
+class AbuseIPService {
+  constructor() {
+    this.apiKey = process.env.AbuseIP_API_KEY;
+    this.baseUrl = 'https://api.abuseipdb.com/api/v2';
+    this.timeout = 10000;
+    
+    // Mapeo de categorías de AbuseIPDB
+    this.categoryMap = {
+      1: 'DNS Compromise',
+      2: 'DNS Poisoning', 
+      3: 'Fraud Orders',
+      4: 'DDoS Attack',
+      5: 'FTP Brute-Force',
+      6: 'Ping of Death',
+      7: 'Phishing',
+      8: 'Fraud VoIP',
+      9: 'Open Proxy',
+      10: 'Web Spam',
+      11: 'Email Spam',
+      12: 'Blog Spam',
+      13: 'VPN IP',
+      14: 'Port Scan',
+      15: 'Hacking',
+      16: 'SQL Injection',
+      17: 'Spoofing',
+      18: 'Brute-Force',
+      19: 'Bad Web Bot',
+      20: 'Exploited Host',
+      21: 'Web App Attack',
+      22: 'SSH',
+      23: 'IoT Targeted'
+    };
+  }
 
-class AbuseIPService { * Obtiene el informe de una dirección IP desde la API de AbuseIPDB.
-
-  constructor() { * @param {string} ipAddress La dirección IP a analizar.
-
-    this.apiKey = process.env.AbuseIP_API_KEY; * @returns {Promise<object>} Un objeto con los datos de reputación de la IP.
-
-    this.baseUrl = 'https://api.abuseipdb.com/api/v2'; */
-
-    this.timeout = 10000; // 10 segundosasync function getIpReport(ipAddress) {
-
-  }  if (!ABUSEIPDB_API_KEY) {
-
-    throw new Error('La clave de API de AbuseIPDB no está configurada.');
-
-  /**  }
-
-   * Obtiene el informe de una dirección IP desde la API de AbuseIPDB.
-
-   * @param {string} ipAddress La dirección IP a analizar.  try {
-
-   * @returns {Promise<object>} Un objeto con los datos de reputación de la IP.    const response = await axios.get(ABUSEIPDB_API_URL, {
-
-   */      params: {
-
-  async getIpReport(ipAddress) {        ipAddress: ipAddress,
-
-    try {        maxAgeInDays: 90, // Antigüedad máxima de los reportes
-
-      if (!this.apiKey) {        verbose: true
-
-        console.warn('⚠️ AbuseIPDB API key not configured');      },
-
-        return {      headers: {
-
-          service: 'AbuseIPDB',        'Key': ABUSEIPDB_API_KEY,
-
-          ip: ipAddress,        'Accept': 'application/json'
-
-          error: 'API key not configured',      }
-
-          status: 'unavailable'    });
-
+  async getIpReport(ipAddress) {
+    try {
+      if (!this.apiKey) {
+        return {
+          service: 'AbuseIPDB',
+          ip: ipAddress,
+          error: 'API key not configured',
+          status: 'unavailable'
         };
+      }
 
-      }    return response.data.data;
-
-  } catch (error) {
-
-      console.log(`🔍 AbuseIPDB: Analyzing IP ${ipAddress}`);    console.error('Error al contactar la API de AbuseIPDB:', error.response?.data |
-
-
-
-      const response = await axios.get(`${this.baseUrl}/check`, {| error.message);
-
-        params: {    throw new Error('No se pudo obtener el informe de AbuseIPDB.');
-
-          ipAddress: ipAddress,  }
-
-          maxAgeInDays: 90, // Antigüedad máxima de los reportes}
-
+      const response = await axios.get(`${this.baseUrl}/check`, {
+        params: {
+          ipAddress: ipAddress,
+          maxAgeInDays: 90,
           verbose: true
-
-        },module.exports = { getIpReport };
+        },
         headers: {
           'Key': this.apiKey,
           'Accept': 'application/json'
@@ -85,85 +64,109 @@ class AbuseIPService { * Obtiene el informe de una dirección IP desde la API de
       });
 
       const data = response.data.data;
-
+      const categories = this.processCategories(data.reports);
+      
       return {
         service: 'AbuseIPDB',
         ip: ipAddress,
         status: 'success',
-        ipAddress: data.ipAddress,
-        isPublic: data.isPublic,
-        ipVersion: data.ipVersion,
-        isWhitelisted: data.isWhitelisted,
-        abuseConfidencePercentage: data.abuseConfidencePercentage,
+        abuseConfidencePercentage: data.abuseConfidenceScore,  // API usa abuseConfidenceScore
+        totalReports: data.totalReports,
+        numDistinctUsers: data.numDistinctUsers,
+        lastReportedAt: data.lastReportedAt,
         countryCode: data.countryCode,
         countryName: data.countryName,
         usageType: data.usageType,
         isp: data.isp,
-        domain: data.domain,
-        totalReports: data.totalReports,
-        numDistinctUsers: data.numDistinctUsers,
-        lastReportedAt: data.lastReportedAt,
-        reports: data.reports ? data.reports.slice(0, 5) : [], // Limitar a 5 reportes más recientes
-        riskLevel: this.calculateRiskLevel(data.abuseConfidencePercentage),
+        isWhitelisted: data.isWhitelisted,
+        categories: categories,  // ✨ Nuevas categorías procesadas
+        mostCommonCategory: categories.length > 0 ? categories[0].name : null,
+        riskLevel: this.calculateRiskLevel(data.abuseConfidenceScore),  // Corregido
+        riskExplanation: this.getRiskExplanation(data.abuseConfidenceScore, data.totalReports, categories),  // Incluir categorías
         timestamp: new Date().toISOString()
       };
 
     } catch (error) {
-      console.error('❌ AbuseIPDB API error:', error.message);
-      
-      if (error.response?.status === 429) {
-        return {
-          service: 'AbuseIPDB',
-          ip: ipAddress,
-          error: 'Rate limit exceeded',
-          status: 'rate_limited',
-          message: 'Daily API limit reached. Please try again tomorrow.'
-        };
-      }
-
-      if (error.response?.status === 422) {
-        return {
-          service: 'AbuseIPDB',
-          ip: ipAddress,
-          error: 'Invalid IP address',
-          status: 'invalid_input',
-          message: 'The provided IP address is not valid'
-        };
-      }
-
       return {
         service: 'AbuseIPDB',
         ip: ipAddress,
-        error: 'Service temporarily unavailable',
+        error: 'Service error',
         status: 'error',
         message: error.message
       };
     }
   }
 
-  /**
-   * Calcula el nivel de riesgo basado en el porcentaje de confianza de abuso
-   * @param {number} abuseConfidence - Porcentaje de confianza de abuso (0-100)
-   * @returns {string} Nivel de riesgo
-   */
   calculateRiskLevel(abuseConfidence) {
     if (abuseConfidence === undefined || abuseConfidence === null) return 'unknown';
     
+    // Si tiene 0% de confianza de abuso, es limpia
     if (abuseConfidence === 0) return 'clean';
-    if (abuseConfidence < 25) return 'low_risk';
-    if (abuseConfidence < 50) return 'medium_risk';
-    if (abuseConfidence < 75) return 'high_risk';
-    return 'critical';
+    
+    // Clasificación original - menos estricta
+    if (abuseConfidence > 0 && abuseConfidence < 15) return 'low_risk';     // Revertido a low_risk
+    if (abuseConfidence < 35) return 'medium_risk';   // Revertido a medium_risk
+    if (abuseConfidence < 65) return 'high_risk';     // Revertido a high_risk
+    return 'malicious';  // 65%+ es definitivamente maliciosa
   }
 
-  /**
-   * Verifica si el servicio está disponible
-   * @returns {boolean} True si el API key está configurado
-   */
+  getRiskExplanation(abuseConfidence, totalReports, categories = []) {
+    const categoryText = categories.length > 0 
+      ? ` Categorías: ${categories.map(c => c.name).join(', ')}.`
+      : '';
+    
+    if (abuseConfidence === 0) {
+      return `IP limpia sin reportes de abuso. Confianza: ${abuseConfidence}%.`;
+    }
+    
+    if (abuseConfidence < 15) {
+      return `IP con pocos reportes de abuso (${abuseConfidence}% confianza, ${totalReports || 0} reportes).${categoryText} Riesgo bajo.`;
+    }
+    
+    if (abuseConfidence < 35) {
+      return `IP reportada como abusiva (${abuseConfidence}% confianza, ${totalReports || 0} reportes).${categoryText} Monitorear actividad.`;
+    }
+    
+    if (abuseConfidence < 65) {
+      return `IP con actividad sospechosa confirmada (${abuseConfidence}% confianza, ${totalReports || 0} reportes).${categoryText} Precaución recomendada.`;
+    }
+    
+    return `IP confirmada como maliciosa (${abuseConfidence}% confianza, ${totalReports || 0} reportes).${categoryText} Amenaza crítica.`;
+  }
+
+  // Procesar categorías de los reportes
+  processCategories(reports) {
+    if (!reports || !Array.isArray(reports)) return [];
+    
+    const allCategories = new Set();
+    reports.forEach(report => {
+      if (report.categories && Array.isArray(report.categories)) {
+        report.categories.forEach(catId => {
+          allCategories.add(catId);
+        });
+      }
+    });
+    
+    return Array.from(allCategories).map(catId => ({
+      id: catId,
+      name: this.categoryMap[catId] || `Unknown Category ${catId}`,
+      severity: this.getCategorySeverity(catId)
+    }));
+  }
+  
+  // Determinar severidad de categoría
+  getCategorySeverity(categoryId) {
+    const highSeverity = [4, 15, 16, 18, 21]; // DDoS, Hacking, SQL Injection, Brute-Force, Web App Attack
+    const mediumSeverity = [7, 14, 20, 22]; // Phishing, Port Scan, Exploited Host, SSH
+    
+    if (highSeverity.includes(categoryId)) return 'high';
+    if (mediumSeverity.includes(categoryId)) return 'medium';
+    return 'low';
+  }
+  
   isAvailable() {
     return !!this.apiKey;
   }
 }
 
-// Exportar instancia singleton
 module.exports = new AbuseIPService();

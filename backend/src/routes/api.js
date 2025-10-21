@@ -8,6 +8,18 @@ const securityController = require('../controllers/securityController');
 const { redisClient } = require('../config/redisClient');
 
 /**
+ * @route   GET /api/health
+ * @desc    Health check endpoint
+ */
+router.get('/health', securityController.healthCheck);
+
+/**
+ * @route   GET /api/config
+ * @desc    Configuration status endpoint
+ */
+router.get('/config', securityController.getConfig);
+
+/**
  * @route   POST /api/analyze
  * @desc    Analiza una entidad (dominio, email o IP) buscando métricas de seguridad.
  */

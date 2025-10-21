@@ -1,0 +1,30 @@
+# Redis con Docker para Dashboard Seguridad
+# Más fácil y confiable que instalación local
+
+version: '3.8'
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: dashboard-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+volumes:
+  redis_data:
+    driver: local
+
+# Comandos útiles:
+# docker-compose up -d        # Iniciar Redis en background
+# docker-compose down         # Detener Redis
+# docker-compose logs redis   # Ver logs de Redis
+# docker exec -it dashboard-redis redis-cli  # Conectar a Redis CLI

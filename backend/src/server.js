@@ -14,7 +14,7 @@ const PORT = process.env.PORT || 5000;
 
 // --- Configuración de Middleware (en el orden correcto) ---
 const corsOptions = {
-  origin: process.env.CORS_ORIGIN || 'http://localhost:8080',
+  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
   optionsSuccessStatus: 200
 };
 app.use(cors(corsOptions));
