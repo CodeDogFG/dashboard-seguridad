@@ -356,13 +356,12 @@ SecurityDashboard.vue
 - Actualiza la documentación cuando sea necesario
 - Utiliza Conventional Commits
 
-## 📞 Soporte
+## Soporte
 
 Si tienes preguntas o problemas:
 
 - 🐛 **Issues**: [GitHub Issues](https://github.com/CodeDogFG/dashboard-seguridad/issues)
 - 💬 **Discussions**: [GitHub Discussions](https://github.com/CodeDogFG/dashboard-seguridad/discussions)
-- 📧 **Email**: [contacto@ejemplo.com](mailto:contacto@ejemplo.com)
 
 ## 📄 Licencia
 
