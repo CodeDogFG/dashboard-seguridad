@@ -37,6 +37,8 @@ class AbuseIPService {
       22: 'SSH',
       23: 'IoT Targeted'
     };
+
+
   }
 
   async getIpReport(ipAddress) {

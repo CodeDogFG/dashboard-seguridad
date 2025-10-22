@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test OWASP Mapping</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <h1>🎯 Test OWASP Top 10 Mapping</h1>
+    
+    <div>
+        <button onclick="testIP()">Test IP 189.112.0.11</button>
+        <button onclick="testGoogleDNS()">Test Google DNS</button>
+    </div>
+    
+    <div id="results" style="margin-top: 20px;"></div>
+    <canvas id="owaspChart" width="400" height="200" style="margin-top: 20px;"></canvas>
+    
+    <script>
+        async function testIP() {
+            try {
+                console.log('🔍 Testing IP 189.112.0.11...');
+                const response = await fetch('http://localhost:5000/api/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type: 'ip', value: '189.112.0.11' })
+                });
+                
+                const data = await response.json();
+                console.log('📊 Full response:', data);
+                
+                if (data.data?.services?.abuseIP?.categories) {
+                    console.log('🏷️ Categories with OWASP mapping:');
+                    data.data.services.abuseIP.categories.forEach(cat => {
+                        console.log(`• ${cat.name} -> ${cat.owaspCategory || 'NO OWASP MAPPING'}`);
+                    });
+                    
+                    // Group by OWASP
+                    const owaspCount = {};
+                    data.data.services.abuseIP.categories.forEach(cat => {
+                        const owasp = cat.owaspCategory || 'A10:2021 - Server-Side Request Forgery';
+                        owaspCount[owasp] = (owaspCount[owasp] || 0) + 1;
+                    });
+                    
+                    console.log('📈 OWASP Count:', owaspCount);
+                    updateChart(owaspCount);
+                    
+                    document.getElementById('results').innerHTML = 
+                        '<h3>✅ Success!</h3>' +
+                        '<p>Risk Score: ' + data.data.summary.risk_score + '</p>' +
+                        '<p>Categories found: ' + data.data.services.abuseIP.categories.length + '</p>' +
+                        '<pre>' + JSON.stringify(owaspCount, null, 2) + '</pre>';
+                } else {
+                    document.getElementById('results').innerHTML = '<h3>❌ No categories found</h3>';
+                }
+            } catch (error) {
+                console.error('❌ Error:', error);
+                document.getElementById('results').innerHTML = '<h3>❌ Error: ' + error.message + '</h3>';
+            }
+        }
+        
+        async function testGoogleDNS() {
+            try {
+                console.log('🔍 Testing Google DNS...');
+                const response = await fetch('http://localhost:5000/api/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type: 'ip', value: '8.8.8.8' })
+                });
+                
+                const data = await response.json();
+                console.log('📊 Google DNS response:', data);
+                
+                if (data.data?.services?.abuseIP?.categories) {
+                    console.log('🏷️ Google DNS Categories:');
+                    data.data.services.abuseIP.categories.forEach(cat => {
+                        console.log(`• ${cat.name} -> ${cat.owaspCategory || 'NO OWASP MAPPING'}`);
+                    });
+                }
+            } catch (error) {
+                console.error('❌ Error:', error);
+            }
+        }
+        
+        let chartInstance = null;
+        
+        function updateChart(owaspCount) {
+            const ctx = document.getElementById('owaspChart').getContext('2d');
+            
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+            
+            const labels = Object.keys(owaspCount).map(label => 
+                label.replace('A0', 'A').replace(':2021 - ', ': ')
+            );
+            const data = Object.values(owaspCount);
+            
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Reportes por OWASP Top 10',
+                        data: data,
+                        backgroundColor: [
+                            '#DC2626', '#EA580C', '#D97706', '#CA8A04', '#65A30D',
+                            '#16A34A', '#059669', '#0891B2', '#0284C7', '#7C3AED'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Amenazas por OWASP Top 10 (2021)'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>

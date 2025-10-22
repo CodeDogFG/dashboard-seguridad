@@ -14,7 +14,11 @@ const PORT = process.env.PORT || 5000;
 
 // --- Configuración de Middleware (en el orden correcto) ---
 const corsOptions = {
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:5174', 
+    process.env.CORS_ORIGIN
+  ].filter(Boolean),
   optionsSuccessStatus: 200
 };
 app.use(cors(corsOptions));
@@ -22,6 +26,11 @@ app.use(express.json({ limit: '100kb' }));
 
 // --- Montaje de Rutas de la API ---
 app.use('/api', apiRoutes);
+
+// Servir página de prueba
+app.get('/test', (req, res) => {
+  res.sendFile('test-owasp.html', { root: __dirname + '/..' });
+});
 
 // --- Función de arranque del servidor ---
 const startServer = async () => {
