@@ -4,27 +4,21 @@ import {
   Chart as ChartJS, 
   CategoryScale, 
   LinearScale, 
-  PointElement, 
-  LineElement, 
   Title, 
   Tooltip, 
   Legend,
-  ArcElement,
   BarElement
 } from 'chart.js'
-import { Line, Doughnut, Bar } from 'vue-chartjs'
+import { Bar } from 'vue-chartjs'
 import axios from 'axios'
 
-// Registrar componentes de Chart.js
+// Registrar componentes de Chart.js necesarios para gráfico de barras
 ChartJS.register(
   CategoryScale,
   LinearScale,
-  PointElement,
-  LineElement,
   Title,
   Tooltip,
   Legend,
-  ArcElement,
   BarElement
 )
 
@@ -84,10 +78,18 @@ const analyzeEntity = async () => {
   successMessage.value = ''
 
   try {
+    console.log('🔍 Enviando petición a:', `${API_BASE_URL}/api/analyze`)
+    console.log('📤 Datos enviados:', { type: formData.type, value: formData.value.trim() })
+    
     const response = await axios.post(`${API_BASE_URL}/api/analyze`, {
       type: formData.type,
       value: formData.value.trim()
     })
+
+    console.log('📡 Respuesta completa del backend:', response)
+    console.log('📊 Datos de respuesta:', response.data)
+    console.log('🎯 Summary:', response.data.data?.summary)
+    console.log('💯 Risk Score recibido:', response.data.data?.summary?.risk_score)
 
     const result: AnalysisResult = {
       type: formData.type,
@@ -104,7 +106,11 @@ const analyzeEntity = async () => {
     // Limpiar formulario
     formData.value = ''
   } catch (err: any) {
-    console.error('Error al analizar:', err)
+    console.error('❌ Error completo al analizar:', err)
+    console.error('❌ Error response:', err.response)
+    console.error('❌ Error message:', err.message)
+    console.error('❌ Error config:', err.config)
+    
     if (err.response?.status === 400) {
       error.value = err.response.data.message || 'Datos de entrada inválidos'
     } else if (err.response?.status === 500) {
@@ -119,106 +125,153 @@ const analyzeEntity = async () => {
   }
 }
 
-// Datos para gráficos
+// Datos para gráfico de categorías de reportes
 const chartData = ref({
-  riskDistribution: {
-    labels: ['Bajo Riesgo', 'Riesgo Medio', 'Alto Riesgo'],
-    datasets: [{
-      data: [0, 0, 0],
-      backgroundColor: ['#10B981', '#F59E0B', '#EF4444'],
-      borderWidth: 0
-    }]
-  },
-  analysisHistory: {
+  categoryReports: {
     labels: [] as string[],
     datasets: [{
-      label: 'Puntuación de Riesgo',
+      label: 'Cantidad de Reportes',
       data: [] as number[],
-      borderColor: '#6366F1',
-      backgroundColor: 'rgba(99, 102, 241, 0.1)',
-      tension: 0.4
-    }]
-  },
-  entityTypes: {
-    labels: ['Dominios', 'IPs', 'Emails'],
-    datasets: [{
-      label: 'Análisis por Tipo',
-      data: [0, 0, 0],
-      backgroundColor: ['#3B82F6', '#8B5CF6', '#06B6D4']
+      backgroundColor: [
+        '#EF4444', // Rojo - Alta severidad
+        '#F59E0B', // Amarillo - Media severidad  
+        '#10B981', // Verde - Baja severidad
+        '#8B5CF6', // Morado
+        '#06B6D4', // Cyan
+        '#F97316', // Naranja
+        '#EC4899', // Rosa
+        '#84CC16', // Lima
+        '#6366F1', // Índigo
+        '#14B8A6', // Teal
+        '#F59E0B', // Ámbar
+        '#EF4444'  // Rojo alternativo
+      ],
+      borderWidth: 2,
+      borderColor: '#ffffff'
     }]
   }
 })
 
-// Opciones de gráficos
-const chartOptions = {
+// Opciones específicas para gráfico de categorías
+const categoryChartOptions = {
   responsive: true,
   maintainAspectRatio: false,
   plugins: {
     legend: {
-      position: 'bottom' as const
+      display: false // No mostrar leyenda para gráfico de barras
+    },
+    title: {
+      display: true,
+      text: 'Categorías de Amenazas con Reportes',
+      font: {
+        size: 16,
+        weight: 'bold' as const
+      }
+    },
+    tooltip: {
+      callbacks: {
+        title: (tooltipItems: any[]) => {
+          return `${tooltipItems[0].label}`
+        },
+        label: (context: any) => {
+          return `Reportes: ${context.parsed.y}`
+        }
+      }
+    }
+  },
+  scales: {
+    y: {
+      beginAtZero: true,
+      ticks: {
+        stepSize: 1,
+        callback: function(value: any) {
+          return Number.isInteger(value) ? value : null
+        }
+      },
+      title: {
+        display: true,
+        text: 'Cantidad de Reportes'
+      }
+    },
+    x: {
+      ticks: {
+        maxRotation: 45,
+        minRotation: 45
+      },
+      title: {
+        display: true,
+        text: 'Categorías de Amenazas'
+      }
     }
   }
 }
 
-// Función para actualizar gráficos
+// Función para actualizar gráfico de categorías
 const updateCharts = () => {
   if (analysisResults.value.length === 0) return
 
-  // Distribución de riesgo
-  const lowRisk = analysisResults.value.filter(r => r.riskScore < 30).length
-  const mediumRisk = analysisResults.value.filter(r => r.riskScore >= 30 && r.riskScore < 70).length
-  const highRisk = analysisResults.value.filter(r => r.riskScore >= 70).length
+  // Contar reportes por categoría de AbuseIPDB
+  const categoryCount = new Map<string, number>()
   
-  // Recrear completamente el objeto para forzar reactividad
-  chartData.value.riskDistribution = {
-    labels: ['Bajo Riesgo', 'Riesgo Medio', 'Alto Riesgo'],
-    datasets: [{
-      data: [lowRisk, mediumRisk, highRisk],
-      backgroundColor: ['#10B981', '#F59E0B', '#EF4444'],
-      borderWidth: 0
-    }]
-  }
+  analysisResults.value.forEach(result => {
+    // Solo procesar resultados que tengan datos de AbuseIPDB con categorías
+    if (result.details?.services?.abuseIP?.categories) {
+      result.details.services.abuseIP.categories.forEach((category: any) => {
+        const categoryName = category.name
+        categoryCount.set(categoryName, (categoryCount.get(categoryName) || 0) + 1)
+      })
+    }
+  })
 
-  // Historial de análisis (últimos 10)
-  const recentResults = analysisResults.value.slice(0, 10).reverse()
-  chartData.value.analysisHistory = {
-    labels: recentResults.map((_, index) => `#${index + 1}`),
-    datasets: [{
-      label: 'Puntuación de Riesgo',
-      data: recentResults.map(r => r.riskScore),
-      borderColor: '#6366F1',
-      backgroundColor: 'rgba(99, 102, 241, 0.1)',
-      tension: 0.4
-    }]
-  }
+  // Convertir a arrays para Chart.js, ordenar por cantidad de reportes
+  // Solo mostrar categorías que tienen reportes (> 0)
+  const sortedCategories = Array.from(categoryCount.entries())
+    .filter(([, count]) => count > 0) // Filtrar solo categorías con reportes
+    .sort((a, b) => b[1] - a[1]) // Ordenar de mayor a menor
+    .slice(0, 15) // Mostrar máximo 15 categorías para mejor visualización
 
-  // Tipos de entidades
-  const domains = analysisResults.value.filter(r => r.type === 'domain').length
-  const ips = analysisResults.value.filter(r => r.type === 'ip').length
-  const emails = analysisResults.value.filter(r => r.type === 'email').length
-  
-  chartData.value.entityTypes = {
-    labels: ['Dominios', 'IPs', 'Emails'],
-    datasets: [{
-      label: 'Análisis por Tipo',
-      data: [domains, ips, emails],
-      backgroundColor: ['#3B82F6', '#8B5CF6', '#06B6D4']
-    }]
+  if (sortedCategories.length > 0) {
+    chartData.value.categoryReports = {
+      labels: sortedCategories.map(([name]) => name),
+      datasets: [{
+        label: 'Cantidad de Reportes por Categoría',
+        data: sortedCategories.map(([, count]) => count),
+        backgroundColor: [
+          '#EF4444', // Rojo
+          '#F97316', // Naranja
+          '#F59E0B', // Ámbar
+          '#EAB308', // Amarillo
+          '#84CC16', // Lima
+          '#22C55E', // Verde
+          '#10B981', // Esmeralda
+          '#14B8A6', // Teal
+          '#06B6D4', // Cian
+          '#0EA5E9', // Azul cielo
+          '#3B82F6', // Azul
+          '#6366F1', // Índigo
+          '#8B5CF6', // Violeta
+          '#A855F7', // Púrpura
+          '#EC4899'  // Rosa
+        ].slice(0, sortedCategories.length),
+        borderWidth: 2,
+        borderColor: '#ffffff'
+      }]
+    }
   }
 }
 
 // Función para obtener color de riesgo
 const getRiskColor = (score: number): string => {
-  if (score < 30) return '#10B981' // Verde
-  if (score < 70) return '#F59E0B' // Amarillo
-  return '#EF4444' // Rojo
+  if (score < 30) return '#22c55e' // verde
+  if (score < 70) return '#eab308' // amarillo
+  return '#ef4444' // rojo
 }
 
 // Función para obtener etiqueta de riesgo
 const getRiskLabel = (score: number): string => {
-  if (score < 30) return 'Bajo Riesgo'
-  if (score < 70) return 'Riesgo Medio'
-  return 'Alto Riesgo'
+  if (score < 30) return 'BAJO'
+  if (score < 70) return 'MEDIO'
+  return 'ALTO'
 }
 
 // Limpiar mensajes después de 5 segundos
@@ -308,26 +361,13 @@ $watch(successMessage, clearMessages)
 
     <!-- Resultados y gráficos -->
     <div class="results-section" v-if="analysisResults.length > 0">
-      <!-- Gráficos -->
+      <!-- Gráfico de Categorías de Reportes -->
       <div class="charts-grid">
-        <div class="chart-container">
-          <h3>Distribución de Riesgo</h3>
+        <div class="chart-container-single">
+          <h3>📊 Categorías de Amenazas Reportadas</h3>
+          <p class="chart-description">Distribución de tipos de amenazas detectadas por AbuseIPDB (solo categorías con reportes)</p>
           <div class="chart-wrapper">
-            <Doughnut :data="chartData.riskDistribution" :options="chartOptions" />
-          </div>
-        </div>
-
-        <div class="chart-container">
-          <h3>Historial de Análisis</h3>
-          <div class="chart-wrapper">
-            <Line :data="chartData.analysisHistory" :options="chartOptions" />
-          </div>
-        </div>
-
-        <div class="chart-container">
-          <h3>Tipos de Entidades</h3>
-          <div class="chart-wrapper">
-            <Bar :data="chartData.entityTypes" :options="chartOptions" />
+            <Bar :data="chartData.categoryReports" :options="categoryChartOptions" />
           </div>
         </div>
       </div>
@@ -521,30 +561,41 @@ $watch(successMessage, clearMessages)
   gap: 2rem;
 }
 
-/* Gráficos */
+/* Gráfico de categorías */
 .charts-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  display: flex;
+  justify-content: center;
   gap: 2rem;
 }
 
-.chart-container {
+.chart-container-single {
   background: white;
-  padding: 1.5rem;
+  padding: 2rem;
   border-radius: 12px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
   border: 1px solid rgba(0, 0, 0, 0.05);
+  width: 100%;
+  max-width: 900px;
 }
 
-.chart-container h3 {
-  margin-bottom: 1rem;
+.chart-container-single h3 {
+  margin-bottom: 0.5rem;
   color: #1F2937;
-  font-size: 1.2rem;
+  font-size: 1.4rem;
   font-weight: 600;
+  text-align: center;
+}
+
+.chart-description {
+  color: #6B7280;
+  font-size: 0.9rem;
+  text-align: center;
+  margin-bottom: 2rem;
+  font-style: italic;
 }
 
 .chart-wrapper {
-  height: 250px;
+  height: 400px;
   position: relative;
 }
 
@@ -698,8 +749,12 @@ $watch(successMessage, clearMessages)
     gap: 1rem;
   }
   
-  .charts-grid {
-    grid-template-columns: 1fr;
+  .chart-container-single {
+    padding: 1rem;
+  }
+  
+  .chart-wrapper {
+    height: 300px;
   }
   
   .results-grid {
@@ -710,20 +765,21 @@ $watch(successMessage, clearMessages)
 /* Tema oscuro */
 @media (prefers-color-scheme: dark) {
   .analysis-panel,
-  .chart-container,
+  .chart-container-single,
   .results-list {
     background: #1F2937;
     border-color: #374151;
   }
   
   .panel-header h2,
-  .chart-container h3,
+  .chart-container-single h3,
   .results-list h3,
   .result-value {
     color: #F9FAFB;
   }
   
   .panel-header p,
+  .chart-description,
   .result-time {
     color: #D1D5DB;
   }

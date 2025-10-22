@@ -7,16 +7,9 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# Dependencies - NO subir nunca a GitHub
-node_modules/
-*/node_modules/
-backend/node_modules/
-frontend/node_modules/
-
-# Build outputs
-dist/
-dist-ssr/
-build/
+node_modules
+dist
+dist-ssr
 *.local
 
 # Editor directories and files
@@ -30,40 +23,10 @@ build/
 *.sln
 *.sw?
 
-# Environment variables - CRÍTICO para seguridad
+# # Environment variables - CRÍTICO para seguridad
 .env
 .env.local
 .env.production
 .env.staging
 .env.test
 .env.*.local
-
-# Testing
-coverage/
-.nyc_output/
-
-# Cache directories
-.cache/
-.parcel-cache/
-.eslintcache
-
-# Runtime data
-pids
-*.pid
-*.seed
-*.pid.lock
-
-# Optional npm cache directory
-.npm
-
-# Optional REPL history
-.node_repl_history
-
-# Output of 'npm pack'
-*.tgz
-
-# Yarn Integrity file
-.yarn-integrity
-
-
-
