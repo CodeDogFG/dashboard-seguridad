@@ -11,7 +11,6 @@ import {
 } from 'chart.js'
 import { Bar } from 'vue-chartjs'
 import axios from 'axios'
-
 // Registrar componentes de Chart.js necesarios para gráfico de barras
 ChartJS.register(
   CategoryScale,
@@ -23,6 +22,14 @@ ChartJS.register(
 )
 
 // Tipos TypeScript
+interface Category {
+  id: number
+  name: string
+  count: number
+  severity: 'high' | 'medium' | 'low'
+  uniqueReporters: number
+}
+
 interface AnalysisResult {
   type: string
   value: string
@@ -33,22 +40,50 @@ interface AnalysisResult {
     type: string
     timestamp: string
     services: {
-      virusTotal?: any
-      abuseIP?: any
-      shodan?: any
+      abuseIP?: {
+        service: string
+        status: string
+        ip: string
+        abuseConfidencePercentage: number
+        countryCode: string
+        countryName: string
+        usageType: string
+        isp: string
+        domain: string
+        totalReports: number
+        numDistinctUsers: number
+        lastReportedAt: string
+        riskScore: number
+        riskLevel: string
+        isWhitelisted: boolean
+        categories: Category[]
+        categoryStats: {
+          high: number
+          medium: number
+          low: number
+          total: number
+          mostCommon: Category[]
+        }
+        reportsByDate: Record<string, number>
+        totalReportsAnalyzed: number
+        uniqueReporters: number
+      }
     }
     summary: {
       risk_score: number
       risk_level: string
       threats_detected: number
+      abuse_confidence: number
+      reports_analyzed: number
+      unique_categories: number
+      unique_reporters: number
     }
-    extracted_domain?: string
   }
   recommendations: string[]
 }
 
 interface FormData {
-  type: 'domain' | 'ip' | 'email'
+  type: 'ip'
   value: string
 }
 
@@ -56,7 +91,7 @@ interface FormData {
 const isLoading = ref(false)
 const analysisResults = ref<AnalysisResult[]>([])
 const formData = reactive<FormData>({
-  type: 'domain',
+  type: 'ip',
   value: ''
 })
 
@@ -69,7 +104,14 @@ const API_BASE_URL = 'http://localhost:5000'
 // Función para analizar entidad
 const analyzeEntity = async () => {
   if (!formData.value.trim()) {
-    error.value = 'Por favor, ingresa un valor para analizar'
+    error.value = 'Por favor, ingresa una dirección IP para analizar'
+    return
+  }
+
+  // Validar formato de IP básico
+  const ipRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/
+  if (!ipRegex.test(formData.value.trim())) {
+    error.value = 'Por favor, ingresa una dirección IP válida (ej: 192.168.1.1)'
     return
   }
 
@@ -79,11 +121,11 @@ const analyzeEntity = async () => {
 
   try {
     console.log('🔍 Enviando petición a:', `${API_BASE_URL}/api/analyze`)
-    console.log('📤 Datos enviados:', { type: formData.type, value: formData.value.trim() })
+    console.log('📤 Datos enviados:', { type: formData.type, entity: formData.value.trim() })
     
     const response = await axios.post(`${API_BASE_URL}/api/analyze`, {
       type: formData.type,
-      value: formData.value.trim()
+      entity: formData.value.trim()
     })
 
     console.log('📡 Respuesta completa del backend:', response)
@@ -101,7 +143,7 @@ const analyzeEntity = async () => {
     }
 
     analysisResults.value.unshift(result)
-    successMessage.value = `Análisis completado para ${formData.type}: ${formData.value}`
+    successMessage.value = `Análisis completado para IP: ${formData.value}`
     
     // Limpiar formulario
     formData.value = ''
@@ -112,7 +154,7 @@ const analyzeEntity = async () => {
     console.error('❌ Error config:', err.config)
     
     if (err.response?.status === 400) {
-      error.value = err.response.data.message || 'Datos de entrada inválidos'
+      error.value = err.response.data.message || 'Dirección IP inválida'
     } else if (err.response?.status === 500) {
       error.value = 'Error interno del servidor. Por favor, inténtalo de nuevo.'
     } else if (err.code === 'ECONNREFUSED') {
@@ -175,6 +217,22 @@ const categoryChartOptions = {
         },
         label: (context: any) => {
           return `Reportes: ${context.parsed.y}`
+        },
+        afterLabel: (context: any) => {
+          // Encontrar la categoría correspondiente para mostrar más información
+          const categoryName = context.label
+          let additionalInfo = ''
+          
+          analysisResults.value.forEach(result => {
+            if (result.details?.services?.abuseIP?.categories) {
+              const category = result.details.services.abuseIP.categories.find((cat: Category) => cat.name === categoryName)
+              if (category) {
+                additionalInfo = `Severidad: ${category.severity.toUpperCase()}\nReporteros únicos: ${category.uniqueReporters}`
+              }
+            }
+          })
+          
+          return additionalInfo.split('\n')
         }
       }
     }
@@ -210,49 +268,40 @@ const categoryChartOptions = {
 const updateCharts = () => {
   if (analysisResults.value.length === 0) return
 
-  // Contar reportes por categoría de AbuseIPDB
-  const categoryCount = new Map<string, number>()
+  // Agregar reportes por categoría de AbuseIPDB con conteos reales
+  const categoryMap = new Map<string, {count: number, severity: string}>()
   
   analysisResults.value.forEach(result => {
     // Solo procesar resultados que tengan datos de AbuseIPDB con categorías
     if (result.details?.services?.abuseIP?.categories) {
-      result.details.services.abuseIP.categories.forEach((category: any) => {
-        const categoryName = category.name
-        categoryCount.set(categoryName, (categoryCount.get(categoryName) || 0) + 1)
+      result.details.services.abuseIP.categories.forEach((category: Category) => {
+        const existing = categoryMap.get(category.name) || {count: 0, severity: category.severity}
+        existing.count += category.count // Usar el conteo real de reportes, no solo ocurrencias
+        categoryMap.set(category.name, existing)
       })
     }
   })
 
   // Convertir a arrays para Chart.js, ordenar por cantidad de reportes
-  // Solo mostrar categorías que tienen reportes (> 0)
-  const sortedCategories = Array.from(categoryCount.entries())
-    .filter(([, count]) => count > 0) // Filtrar solo categorías con reportes
-    .sort((a, b) => b[1] - a[1]) // Ordenar de mayor a menor
-    .slice(0, 15) // Mostrar máximo 15 categorías para mejor visualización
+  const sortedCategories = Array.from(categoryMap.entries())
+    .filter(([, data]) => data.count > 0)
+    .sort((a, b) => b[1].count - a[1].count)
+    .slice(0, 15) // Mostrar máximo 15 categorías
 
   if (sortedCategories.length > 0) {
+    // Colores por severidad
+    const severityColors: Record<string, string> = {
+      'high': '#EF4444',    // Rojo
+      'medium': '#F59E0B',  // Ámbar
+      'low': '#6B7280'      // Gris
+    }
+    
     chartData.value.categoryReports = {
       labels: sortedCategories.map(([name]) => name),
       datasets: [{
-        label: 'Cantidad de Reportes por Categoría',
-        data: sortedCategories.map(([, count]) => count),
-        backgroundColor: [
-          '#EF4444', // Rojo
-          '#F97316', // Naranja
-          '#F59E0B', // Ámbar
-          '#EAB308', // Amarillo
-          '#84CC16', // Lima
-          '#22C55E', // Verde
-          '#10B981', // Esmeralda
-          '#14B8A6', // Teal
-          '#06B6D4', // Cian
-          '#0EA5E9', // Azul cielo
-          '#3B82F6', // Azul
-          '#6366F1', // Índigo
-          '#8B5CF6', // Violeta
-          '#A855F7', // Púrpura
-          '#EC4899'  // Rosa
-        ].slice(0, sortedCategories.length),
+        label: 'Reportes por Categoría',
+        data: sortedCategories.map(([, data]) => data.count),
+        backgroundColor: sortedCategories.map(([, data]) => severityColors[data.severity] || '#8B5CF6'),
         borderWidth: 2,
         borderColor: '#ffffff'
       }]
@@ -314,31 +363,22 @@ $watch(successMessage, clearMessages)
 
 <template>
   <div class="security-dashboard">
-    <!-- Panel de análisis -->
-    <div class="analysis-panel">
-      <div class="panel-header">
-        <h2>🔍 Análisis de Seguridad</h2>
-        <p>Analiza dominios, IPs y direcciones de email</p>
-      </div>
+      <!-- Panel de análisis -->
+      <div class="analysis-panel">
+        <div class="panel-header">
+          <h2>🔍 Análisis de Seguridad de IPs</h2>
+          <p>Analiza direcciones IP usando AbuseIPDB</p>
+        </div>
 
       <form @submit.prevent="analyzeEntity" class="analysis-form">
         <div class="form-group">
-          <label for="type">Tipo de análisis:</label>
-          <select id="type" v-model="formData.type" class="form-select">
-            <option value="domain">Dominio</option>
-            <option value="ip">Dirección IP</option>
-            <option value="email">Email</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label for="value">{{ formData.type === 'domain' ? 'Dominio' : formData.type === 'ip' ? 'IP' : 'Email' }}:</label>
+          <label for="value">Dirección IP:</label>
           <input 
             id="value"
             v-model="formData.value" 
             type="text" 
             class="form-input"
-            :placeholder="formData.type === 'domain' ? 'example.com' : formData.type === 'ip' ? '192.168.1.1' : 'user@example.com'"
+            placeholder="192.168.1.1"
             :disabled="isLoading"
             required
           />
@@ -346,7 +386,7 @@ $watch(successMessage, clearMessages)
 
         <button type="submit" class="analyze-btn" :disabled="isLoading">
           <span v-if="isLoading">🔄 Analizando...</span>
-          <span v-else>Analizar</span>
+          <span v-else>Analizar IP</span>
         </button>
       </form>
 
@@ -364,8 +404,8 @@ $watch(successMessage, clearMessages)
       <!-- Gráfico de Categorías de Reportes -->
       <div class="charts-grid">
         <div class="chart-container-single">
-          <h3>📊 Categorías de Amenazas Reportadas</h3>
-          <p class="chart-description">Distribución de tipos de amenazas detectadas por AbuseIPDB (solo categorías con reportes)</p>
+          <h3>Categorías de Amenazas Reportadas</h3>
+          <p class="chart-description">Distribución de tipos de amenazas detectadas por AbuseIPDB</p>
           <div class="chart-wrapper">
             <Bar :data="chartData.categoryReports" :options="categoryChartOptions" />
           </div>
@@ -397,13 +437,11 @@ $watch(successMessage, clearMessages)
             <div class="result-services" v-if="result.details?.services">
               <small>
                 Servicios: 
-                <span v-if="result.details.services.virusTotal" class="service-tag">VT</span>
-                <span v-if="result.details.services.abuseIP" class="service-tag">AIPDB</span>
-                <span v-if="result.details.services.shodan" class="service-tag">Shodan</span>
+                <span v-if="result.details.services.abuseIP" class="service-tag">AbuseIPDB</span>
               </small>
             </div>
             <!-- Categorías de AbuseIPDB -->
-            <div class="result-categories" v-if="result.details?.services?.abuseIP?.categories?.length > 0">
+            <div class="result-categories" v-if="result.details?.services?.abuseIP?.categories && result.details.services.abuseIP.categories.length > 0">
               <small>
                 🏷️ Categorías: 
                 <span 
@@ -411,11 +449,26 @@ $watch(successMessage, clearMessages)
                   :key="category.id"
                   class="category-tag"
                   :class="`severity-${category.severity}`"
+                  :title="`${category.count} reportes de ${category.uniqueReporters} reporteros únicos`"
                 >
-                  {{ category.name }}
+                  {{ category.name }} ({{ category.count }})
                 </span>
                 <span v-if="result.details.services.abuseIP.categories.length > 2" class="category-more">
                   +{{ result.details.services.abuseIP.categories.length - 2 }} más
+                </span>
+              </small>
+            </div>
+            <!-- Estadísticas detalladas -->
+            <div class="result-stats" v-if="result.details?.services?.abuseIP">
+              <small class="stats-grid">
+                <span v-if="result.details.summary.reports_analyzed > 0" class="stat-item">
+                  📊 {{ result.details.summary.reports_analyzed }} reportes analizados
+                </span>
+                <span v-if="result.details.summary.unique_reporters > 0" class="stat-item">
+                  👥 {{ result.details.summary.unique_reporters }} reporteros únicos
+                </span>
+                <span v-if="result.details.services.abuseIP.countryName" class="stat-item">
+                  🌍 {{ result.details.services.abuseIP.countryName }}
                 </span>
               </small>
             </div>
@@ -436,7 +489,7 @@ $watch(successMessage, clearMessages)
     <div v-else class="empty-state">
       <div class="empty-icon">🛡️</div>
       <h3>¡Comienza tu primer análisis!</h3>
-      <p>Utiliza el formulario superior para analizar dominios, IPs o direcciones de email.</p>
+      <p>Utiliza el formulario superior para analizar direcciones IP con AbuseIPDB.</p>
     </div>
   </div>
 </template>
@@ -479,7 +532,7 @@ $watch(successMessage, clearMessages)
 
 .analysis-form {
   display: grid;
-  grid-template-columns: 1fr 2fr auto;
+  grid-template-columns: 2fr auto;
   gap: 1rem;
   align-items: end;
 }
@@ -717,6 +770,25 @@ $watch(successMessage, clearMessages)
 
 .result-threats {
   margin-bottom: 0.5rem;
+}
+
+.result-stats {
+  margin-bottom: 0.5rem;
+}
+
+.stats-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.stat-item {
+  background: #F3F4F6;
+  color: #4B5563;
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 500;
 }
 
 .result-time {

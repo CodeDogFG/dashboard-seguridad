@@ -1,19 +1,16 @@
 /**
  * @file securityController.js
  * @description Controlador principal para el análisis de seguridad.
- * Maneja las peticiones de análisis de dominios, IPs y emails,
- * orquestando las llamadas a los diferentes servicios de APIs externas.
+ * Maneja las peticiones de análisis de IPs usando únicamente AbuseIPDB API.
  */
 
 require('dotenv').config();
 
-// Importar servicios reales
-const virusTotalService = require('../services/virusTotalService');
+// Importar servicios
 const abuseIpService = require('../services/abuseIpService');
-const shodanService = require('../services/shodanService');
 
 /**
- * @desc    Analiza una entidad (dominio, email o IP) buscando métricas de seguridad
+ * @desc    Analiza una dirección IP usando AbuseIPDB API
  * @route   POST /api/analyze
  * @access  Public
  */
@@ -30,6 +27,15 @@ const analyzeEntity = async (req, res) => {
       });
     }
 
+    // Solo aceptar análisis de IPs
+    if (type.toLowerCase() !== 'ip') {
+      return res.status(400).json({
+        success: false,
+        message: 'Only IP analysis is supported. Type must be "ip"',
+        supportedTypes: ['ip']
+      });
+    }
+
     // Validar formato de entrada básico
     if (typeof entity !== 'string' || entity.trim().length === 0) {
       return res.status(400).json({
@@ -38,102 +44,68 @@ const analyzeEntity = async (req, res) => {
       });
     }
 
-    const cleanEntity = entity.trim();
-    const results = {};
-
-    console.log(`🔍 Analyzing ${type}: ${cleanEntity}`);
-
-    // Análisis según el tipo de entidad
-    switch (type.toLowerCase()) {
-      case 'domain':
-        // Para dominios, usar VirusTotal y futuros servicios
-        results.analysis = {
-          entity: cleanEntity,
-          type: 'domain',
-          status: 'analyzed',
-          message: 'Domain analysis completed',
-          timestamp: new Date().toISOString()
-        };
-        
-        // Simulación de análisis hasta implementar servicios reales
-        results.mockData = {
-          reputation: 'clean',
-          threats_detected: 0,
-          last_scan: new Date().toISOString(),
-          source: 'Security Dashboard v1.0'
-        };
-        break;
-      
-      case 'ip':
-        // Para IPs, usar múltiples servicios
-        results.analysis = {
-          entity: cleanEntity,
-          type: 'ip',
-          status: 'analyzed',
-          message: 'IP analysis completed',
-          timestamp: new Date().toISOString()
-        };
-        
-        // Simulación de análisis
-        results.mockData = {
-          reputation: 'clean',
-          country: 'US',
-          threats_detected: 0,
-          open_ports: [],
-          last_scan: new Date().toISOString(),
-          source: 'Security Dashboard v1.0'
-        };
-        break;
-      
-      case 'email':
-        // Para emails, extraer el dominio y analizarlo
-        const domain = cleanEntity.split('@')[1];
-        if (domain) {
-          results.analysis = {
-            entity: cleanEntity,
-            type: 'email',
-            extracted_domain: domain,
-            status: 'analyzed',
-            message: `Email analysis completed for domain: ${domain}`,
-            timestamp: new Date().toISOString()
-          };
-          
-          results.mockData = {
-            reputation: 'clean',
-            domain_threats: 0,
-            last_scan: new Date().toISOString(),
-            source: `Analysis of domain extracted from ${cleanEntity}`
-          };
-        } else {
-          return res.status(400).json({
-            success: false,
-            message: 'Invalid email format'
-          });
-        }
-        break;
-      
-      default:
-        return res.status(400).json({
-          success: false,
-          message: 'Invalid entity type. Supported types: domain, ip, email',
-          supportedTypes: ['domain', 'ip', 'email']
-        });
+    // Validar formato de IP básico
+    const ipRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+    if (!ipRegex.test(entity.trim())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid IP address format'
+      });
     }
+
+    const cleanEntity = entity.trim();
+    console.log(`🔍 Analyzing IP: ${cleanEntity}`);
+
+    // Analizar IP con AbuseIPDB usando modo verbose para obtener reportes detallados
+    const options = {
+      maxAgeInDays: req.body.maxAgeInDays || 90,
+      verbose: req.body.verbose !== false // Por defecto true
+    };
+    
+    const abuseIpResult = await abuseIpService.getIpReport(cleanEntity, options);
+    
+    if (abuseIpResult.status === 'error') {
+      return res.status(500).json({
+        success: false,
+        message: `AbuseIPDB error: ${abuseIpResult.message}`,
+        entity: cleanEntity,
+        type: 'ip',
+        rateLimitInfo: abuseIpResult.rateLimitInfo || null
+      });
+    }
+
+    const results = {
+      entity: cleanEntity,
+      type: 'ip',
+      timestamp: new Date().toISOString(),
+      services: {
+        abuseIP: abuseIpResult
+      },
+      summary: {
+        risk_score: abuseIpResult.riskScore,
+        risk_level: abuseIpResult.riskLevel,
+        threats_detected: abuseIpResult.totalReports || 0,
+        abuse_confidence: abuseIpResult.abuseConfidencePercentage,
+        reports_analyzed: abuseIpResult.totalReportsAnalyzed || 0,
+        unique_categories: abuseIpResult.categories?.length || 0,
+        unique_reporters: abuseIpResult.uniqueReporters || 0
+      }
+    };
 
     // Respuesta exitosa
     res.json({
       success: true,
       entity: cleanEntity,
-      type: type.toLowerCase(),
+      type: 'ip',
       timestamp: new Date().toISOString(),
-      results
+      data: results
     });
 
   } catch (error) {
-    console.error('❌ Error analyzing entity:', error);
+    console.error('❌ Error analyzing IP:', error);
     res.status(500).json({
       success: false,
-      message: 'Internal server error during analysis',
+      message: 'Internal server error during IP analysis',
       error: process.env.NODE_ENV === 'development' ? error.message : 'Server error'
     });
   }
@@ -153,8 +125,6 @@ const healthCheck = (req, res) => {
     environment: process.env.NODE_ENV || 'development',
     port: process.env.PORT || 5000,
     services: {
-      virusTotal: !!process.env.VIRUSTOTAL_API_KEY,
-      shodan: !!process.env.SHODAN_API_KEY,
       abuseIP: !!process.env.AbuseIP_API_KEY
     },
     uptime: process.uptime(),
@@ -179,8 +149,6 @@ const getConfig = (req, res) => {
     message: 'Configuration status',
     timestamp: new Date().toISOString(),
     apiKeys: {
-      virusTotal: !!process.env.VIRUSTOTAL_API_KEY ? 'configured' : 'missing',
-      shodan: !!process.env.SHODAN_API_KEY ? 'configured' : 'missing',
       abuseIP: !!process.env.AbuseIP_API_KEY ? 'configured' : 'missing'
     },
     rateLimiting: {
@@ -194,97 +162,88 @@ const getConfig = (req, res) => {
 };
 
 /**
- * Orquesta el análisis de seguridad para un tipo de entidad y valor dados.
+ * @desc    Obtiene reportes detallados de una IP usando el endpoint REPORTS de AbuseIPDB
+ * @route   POST /api/reports
+ * @access  Public
+ */
+const getDetailedReports = async (req, res) => {
+  try {
+    const { entity, maxAgeInDays, perPage, page } = req.body;
+
+    // Validación de entrada
+    if (!entity) {
+      return res.status(400).json({
+        success: false,
+        message: 'IP address (entity) is required',
+        received: { entity }
+      });
+    }
+
+    // Validar formato de IP básico
+    const ipRegex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+    if (!ipRegex.test(entity.trim())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid IP address format'
+      });
+    }
+
+    const cleanEntity = entity.trim();
+    console.log(`🔍 Getting detailed reports for IP: ${cleanEntity}`);
+
+    // Opciones para la consulta
+    const options = {
+      maxAgeInDays: maxAgeInDays || 90,
+      perPage: Math.min(perPage || 25, 100), // Máximo 100 por página
+      page: page || 1
+    };
+
+    const reportsResult = await abuseIpService.getDetailedReports(cleanEntity, options);
+    
+    if (reportsResult.status === 'error') {
+      return res.status(500).json({
+        success: false,
+        message: `AbuseIPDB error: ${reportsResult.message}`,
+        entity: cleanEntity,
+        rateLimitInfo: reportsResult.rateLimitInfo || null
+      });
+    }
+
+    // Respuesta exitosa
+    res.json({
+      success: true,
+      entity: cleanEntity,
+      timestamp: new Date().toISOString(),
+      data: reportsResult
+    });
+
+  } catch (error) {
+    console.error('❌ Error getting detailed reports:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error during detailed reports retrieval',
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Server error'
+    });
+  }
+};
+
+/**
+ * Orquesta el análisis de seguridad para direcciones IP usando AbuseIPDB.
  * Función auxiliar para compatibilidad con el código existente del server.js
- * @param {string} type El tipo de entidad ('domain', 'ip', 'email').
- * @param {string} value El valor de la entidad a analizar.
- * @returns {Promise<object>} Un objeto consolidado con los resultados de los diferentes servicios.
+ * @param {string} type El tipo de entidad (solo 'ip' soportado).
+ * @param {string} value El valor de la IP a analizar.
+ * @returns {Promise<object>} Un objeto con los resultados del análisis de AbuseIPDB.
  */
 async function analyze(type, value) {
-  console.log(`🔍 Real analyze function called for ${type}: ${value}`);
+  console.log(`🔍 Analyze function called for ${type}: ${value}`);
   
-  const results = {
-    entity: value,
-    type: type,
-    timestamp: new Date().toISOString(),
-    services: {},
-    summary: {
-      risk_score: 0,
-      risk_level: 'unknown',
-      threats_detected: 0
-    }
-  };
-
-  try {
-    switch (type.toLowerCase()) {
-      case 'domain':
-        // Analizar dominio con VirusTotal
-        if (virusTotalService.isAvailable()) {
-          results.services.virusTotal = await virusTotalService.getDomainReport(value);
-          if (results.services.virusTotal.status === 'success') {
-            results.summary.risk_score = Math.max(results.summary.risk_score, convertRiskScore(results.services.virusTotal.risk_score));
-          }
-        }
-        break;
-        
-      case 'ip':
-        // Analizar IP con múltiples servicios
-        const promises = [];
-        
-        if (virusTotalService.isAvailable()) {
-          promises.push(virusTotalService.getIpReport(value).then(result => ({ service: 'virusTotal', data: result })));
-        }
-        
-        if (abuseIpService.isAvailable()) {
-          promises.push(abuseIpService.getIpReport(value).then(result => ({ service: 'abuseIP', data: result })));
-        }
-        
-        // Shodan siempre disponible (fallback a InternetDB)
-        promises.push(shodanService.getHostInfo(value).then(result => ({ service: 'shodan', data: result })));
-        
-        const ipResults = await Promise.allSettled(promises);
-        
-        ipResults.forEach(result => {
-          if (result.status === 'fulfilled') {
-            const { service, data } = result.value;
-            results.services[service] = data;
-            
-            if (data.status === 'success') {
-              const riskScore = convertRiskScore(data.risk_score || data.riskLevel);
-              results.summary.risk_score = Math.max(results.summary.risk_score, riskScore);
-            }
-          }
-        });
-        break;
-        
-      case 'email':
-        // Extraer dominio del email y analizarlo
-        const domain = value.split('@')[1];
-        if (domain && virusTotalService.isAvailable()) {
-          results.services.virusTotal = await virusTotalService.getDomainReport(domain);
-          results.extracted_domain = domain;
-          
-          if (results.services.virusTotal.status === 'success') {
-            results.summary.risk_score = Math.max(results.summary.risk_score, convertRiskScore(results.services.virusTotal.risk_score));
-          }
-        }
-        break;
-    }
-    
-    // Calcular nivel de riesgo final
-    results.summary.risk_level = calculateRiskLevel(results.summary.risk_score);
-    results.summary.threats_detected = countThreats(results.services);
-    
-    return results;
-    
-  } catch (error) {
-    console.error(`❌ Error in analyze function:`, error);
+  if (type.toLowerCase() !== 'ip') {
     return {
       entity: value,
       type: type,
       timestamp: new Date().toISOString(),
-      error: 'Analysis failed',
-      message: error.message,
+      error: 'Only IP analysis is supported',
+      message: 'This simplified version only supports IP analysis',
       services: {},
       summary: {
         risk_score: 0,
@@ -293,73 +252,65 @@ async function analyze(type, value) {
       }
     };
   }
-}
 
-/**
- * Convierte diferentes formatos de risk_score a un número de 0-100
- */
-function convertRiskScore(riskScore) {
-  if (typeof riskScore === 'number') return Math.min(100, Math.max(0, riskScore));
-  
-  const riskMap = {
-    'clean': 0,
-    'low_risk': 15,        // Reducido de 25
-    'medium_risk': 40,     // Reducido de 50 
-    'high_risk': 70,       // Reducido de 75
-    'critical': 85,        // Reducido de 90
-    'malicious': 95        // Nuevo nivel
-  };
-  
-  return riskMap[riskScore] || 0;
-}
-
-/**
- * Calcula el nivel de riesgo basado en la puntuación
- */
-function calculateRiskLevel(score) {
-  if (score < 30) return 'low';
-  if (score < 70) return 'medium';
-  return 'high';
-}
-
-/**
- * Cuenta las amenazas detectadas en todos los servicios
- */
-function countThreats(services) {
-  let threats = 0;
-  
-  Object.values(services).forEach(service => {
-    if (service.status === 'success') {
-      // VirusTotal threats
-      if (service.last_analysis_stats) {
-        threats += service.last_analysis_stats.malicious || 0;
-        threats += service.last_analysis_stats.suspicious || 0;
-      }
-      
-      // AbuseIPDB threats - Más estricto: cualquier reporte es una amenaza
-      if (service.abuseConfidencePercentage !== undefined) {
-        if (service.abuseConfidencePercentage > 0) {
-          threats += 1; // Cualquier porcentaje > 0 cuenta como amenaza
-        }
-        // Amenazas adicionales basadas en nivel
-        if (service.abuseConfidencePercentage > 15) threats += 1;
-        if (service.abuseConfidencePercentage > 35) threats += 1;
-        if (service.abuseConfidencePercentage > 65) threats += 2;
-      }
-      
-      // Shodan vulnerabilities
-      if (service.vulns && service.vulns.length > 0) {
-        threats += service.vulns.length;
-      }
+  const results = {
+    entity: value,
+    type: 'ip',
+    timestamp: new Date().toISOString(),
+    services: {},
+    summary: {
+      risk_score: 0,
+      risk_level: 'unknown',
+      threats_detected: 0,
+      abuse_confidence: 0
     }
-  });
-  
-  return threats;
+  };
+
+  try {
+    // Analizar IP con AbuseIPDB
+    if (abuseIpService.isAvailable()) {
+      const abuseResult = await abuseIpService.getIpReport(value);
+      results.services.abuseIP = abuseResult;
+      
+      if (abuseResult.status === 'success') {
+        results.summary.risk_score = abuseResult.riskScore;
+        results.summary.risk_level = abuseResult.riskLevel;
+        results.summary.threats_detected = abuseResult.totalReports || 0;
+        results.summary.abuse_confidence = abuseResult.abuseConfidencePercentage;
+      }
+    } else {
+      results.services.abuseIP = {
+        service: 'AbuseIPDB',
+        status: 'error',
+        message: 'API key not configured'
+      };
+    }
+    
+    return results;
+    
+  } catch (error) {
+    console.error(`❌ Error in analyze function:`, error);
+    return {
+      entity: value,
+      type: 'ip',
+      timestamp: new Date().toISOString(),
+      error: 'Analysis failed',
+      message: error.message,
+      services: {},
+      summary: {
+        risk_score: 0,
+        risk_level: 'error',
+        threats_detected: 0,
+        abuse_confidence: 0
+      }
+    };
+  }
 }
 
 module.exports = {
   analyzeEntity,
   healthCheck,
   getConfig,
+  getDetailedReports,
   analyze // Mantener para compatibilidad
 };

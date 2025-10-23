@@ -11,7 +11,10 @@ onMounted(() => {
     isLoading.value = false
   }, 1500)
 })
+
+
 </script>
+
 
 <template>
   <div id="app">
@@ -22,7 +25,7 @@ onMounted(() => {
           <h1>Security Dashboard</h1>
         </div>
         <div class="header-subtitle">
-          <p>Análisis completo de seguridad para dominios, IPs y emails</p>
+          <p>Análisis completo de seguridad para dominios, IPs, emails</p>
         </div>
       </div>
     </header>

@@ -3,9 +3,12 @@
 const express = require('express');
 const router = express.Router();
 const securityController = require('../controllers/securityController');
+const axios = require('axios');
 
 // --- CAMBIO CLAVE: Importamos redisClient desde su propio módulo ---
 const { redisClient } = require('../config/redisClient');
+
+
 
 /**
  * @route   GET /api/health
@@ -18,6 +21,12 @@ router.get('/health', securityController.healthCheck);
  * @desc    Configuration status endpoint
  */
 router.get('/config', securityController.getConfig);
+
+/**
+ * @route   POST /api/reports
+ * @desc    Obtiene reportes detallados de una IP usando el endpoint REPORTS de AbuseIPDB
+ */
+router.post('/reports', securityController.getDetailedReports);
 
 /**
  * @route   POST /api/analyze
