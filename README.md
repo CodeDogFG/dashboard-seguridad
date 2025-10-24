@@ -131,8 +131,6 @@ LOG_LEVEL=info
 
 | Servicio | URL | Descripción |
 |----------|-----|-------------|
-| **VirusTotal** | [virustotal.com/gui/join-us](https://www.virustotal.com/gui/join-us) | Análisis de malware y reputación |
-| **Shodan** | [account.shodan.io](https://account.shodan.io/) | Escaneo de puertos e información de hosts |
 | **AbuseIPDB** | [abuseipdb.com/api](https://www.abuseipdb.com/api) | Base de datos de IPs maliciosas |
 
 ### 3. Configurar Redis (Opcional)
@@ -200,21 +198,12 @@ curl -X POST http://localhost:5000/api/analyze \
 
 ## 🔌 APIs Integradas
 
-### VirusTotal API v3
-- ✅ **Análisis de dominios**: Reputación, categorías, whois
-- ✅ **Análisis de IPs**: Geolocalización, ASN, detecciones
-- 📊 **Rate limit**: 4 requests/min (API gratuita)
 
 ### AbuseIPDB API v2
 - ✅ **Reputación de IPs**: Porcentaje de confianza de abuso
 - ✅ **Reportes históricos**: Hasta 90 días
 - 📊 **Rate limit**: 1000 requests/día (API gratuita)
 
-### Shodan API
-- ✅ **Información de hosts**: Puertos abiertos, servicios
-- ✅ **InternetDB gratuita**: Sin API key requerida
-- ✅ **Fallback inteligente**: API paga → InternetDB gratuita
-- 📊 **Rate limit**: Variable según plan
 
 ## 🛠️ Desarrollo
 
@@ -265,42 +254,6 @@ npm run lint     # Linting (pendiente)
 | `GET` | `/api/config` | Configuración de API keys |
 | `POST` | `/api/analyze` | Analizar entidad (domain/ip/email) |
 
-### Ejemplo de Respuesta
-
-```json
-{
-  "success": true,
-  "entity": "google.com",
-  "type": "domain",
-  "timestamp": "2025-10-20T15:30:45.123Z",
-  "results": {
-    "virusTotal": {
-      "service": "VirusTotal",
-      "reputation": 80,
-      "risk_score": "clean",
-      "last_analysis_stats": {
-        "harmless": 85,
-        "malicious": 0,
-        "suspicious": 0,
-        "undetected": 2
-      }
-    }
-  }
-}
-```
-
-### Arquitectura de Componentes
-
-```
-SecurityDashboard.vue
-├── SearchForm.vue
-├── ResultsPanel.vue
-│   ├── MetricsCards.vue
-│   ├── SecurityChart.vue
-│   └── DetailsTabs.vue
-└── LoadingSpinner.vue
-```
-
 ## 🔒 Seguridad
 
 ### Protección de API Keys
@@ -341,6 +294,7 @@ SecurityDashboard.vue
 - [ ] Exportación de reportes
 - [ ] Despliegue con Docker
 - [ ] CI/CD con GitHub Actions
+- [ ] Implementación de otra APIS como Shodan, VirusTotal
 
 ## 🤝 Contribuir
 
@@ -372,7 +326,10 @@ Este proyecto está bajo la Licencia MIT. Ver el archivo [LICENSE](LICENSE) para
 
 <div align="center">
 
-**Desarrollado con ❤️ por [CodeDogFG](https://github.com/CodeDogFG)**
+**Desarrollado con ❤️ por [CodeDogFG](https://github.com/CodeDogFG)**. 
+**Fegotech**
+
+<img width="375" height="375" alt="logo-md" src="https://github.com/user-attachments/assets/78e8fd0e-6cdc-4fc0-9e90-7773e40c9ad1" />
 
 [![GitHub Stars](https://img.shields.io/github/stars/CodeDogFG/dashboard-seguridad?style=social)](https://github.com/CodeDogFG/dashboard-seguridad/stargazers)
 [![GitHub Forks](https://img.shields.io/github/forks/CodeDogFG/dashboard-seguridad?style=social)](https://github.com/CodeDogFG/dashboard-seguridad/network/members)
