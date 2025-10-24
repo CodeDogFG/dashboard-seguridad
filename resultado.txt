@@ -1,0 +1,520 @@
+ .\test-api.ps1
+Testing Dashboard Seguridad API Endpoints
+============================================
+Checking if server is running at http://localhost:5000...
+Server is running!
+============================================
+
+1. Health Check:
+Status: 200
+{
+    "success":  true,
+    "message":  "Security Dashboard API is healthy",
+    "timestamp":  "2025-10-24T02:23:04.929Z",
+    "version":  "1.0.0",
+    "environment":  "development",
+    "port":  "5000",
+    "services":  {
+                     "abuseIP":  true
+                 },
+    "uptime":  6.5770041,
+    "memory":  {
+                   "used":  "21 MB",
+                   "total":  "51 MB"
+               }
+}
+
+2. Configuration Status:
+Status: 200
+{
+    "success":  true,
+    "message":  "Configuration status",
+    "timestamp":  "2025-10-24T02:23:04.938Z",
+    "apiKeys":  {
+                    "abuseIP":  "configured"
+                },
+    "rateLimiting":  {
+                         "windowMs":  "900000",
+                         "maxRequests":  "100"
+                     },
+    "cors":  {
+                 "frontendUrl":  "http://localhost:5173"
+             }
+}
+
+3. Analyzing google.com (domain):
+Status: 200
+{
+    "query":  "google.com",
+    "type":  "domain",
+    "cached":  false,
+    "data":  {
+                 "entity":  "google.com",
+                 "type":  "domain",
+                 "timestamp":  "2025-10-24T02:23:04.958Z",
+                 "error":  "Only IP analysis is supported",
+                 "message":  "This simplified version only supports IP analysis",
+                 "services":  {
+
+                              },
+                 "summary":  {
+                                 "risk_score":  0,
+                                 "risk_level":  "error",
+                                 "threats_detected":  0
+                             }
+             }
+}
+
+4. Analyzing 8.8.8.8 (IP):
+Status: 200
+{
+    "query":  "8.8.8.8",
+    "type":  "ip",
+    "cached":  false,
+    "data":  {
+                 "entity":  "8.8.8.8",
+                 "type":  "ip",
+                 "timestamp":  "2025-10-24T02:23:04.973Z",
+                 "services":  {
+                                  "abuseIP":  {
+                                                  "service":  "AbuseIPDB",
+                                                  "status":  "success",
+                                                  "ip":  "8.8.8.8",
+                                                  "countryCode":  "US",
+                                                  "countryName":  "United States of America",
+                                                  "usageType":  "Content Delivery Network",
+                                                  "isp":  "Google LLC",
+                                                  "domain":  "google.com",
+                                                  "totalReports":  161,
+                                                  "numDistinctUsers":  50,
+                                                  "lastReportedAt":  "2025-10-23T00:13:51+00:00",
+                                                  "riskScore":  null,
+                                                  "riskLevel":  "high",
+                                                  "isWhitelisted":  true,
+                                                  "categories":  [
+                                                                     {
+                                                                         "id":  18,
+                                                                         "name":  "Brute-Force",
+                                                                         "count":  98,
+                                                                         "severity":  "high",
+                                                                         "firstSeen":  "2025-10-22T21:01:07+00:00",
+                                                                         "lastSeen":  "2025-08-04T17:01:35+00:00",
+                                                                         "uniqueReporters":  29
+                                                                     },
+                                                                     {
+                                                                         "id":  22,
+                                                                         "name":  "SSH",
+                                                                         "count":  70,
+                                                                         "severity":  "medium",
+                                                                         "firstSeen":  "2025-10-22T12:00:32+00:00",
+                                                                         "lastSeen":  "2025-08-04T12:34:00+00:00",
+                                                                         "uniqueReporters":  15
+                                                                     },
+                                                                     {
+                                                                         "id":  14,
+                                                                         "name":  "Port Scan",
+                                                                         "count":  46,
+                                                                         "severity":  "medium",
+                                                                         "firstSeen":  "2025-10-22T21:01:07+00:00",
+                                                                         "lastSeen":  "2025-08-10T10:37:04+00:00",
+                                                                         "uniqueReporters":  14
+                                                                     },
+                                                                     {
+                                                                         "id":  15,
+                                                                         "name":  "Hacking",
+                                                                         "count":  37,
+                                                                         "severity":  "high",
+                                                                         "firstSeen":  "2025-10-22T21:01:07+00:00",
+                                                                         "lastSeen":  "2025-08-10T06:19:02+00:00",
+                                                                         "uniqueReporters":  11
+                                                                     },
+                                                                     {
+                                                                         "id":  21,
+                                                                         "name":  "Web App Attack",
+                                                                         "count":  17,
+                                                                         "severity":  "high",
+                                                                         "firstSeen":  "2025-10-19T03:35:50+00:00",
+                                                                         "lastSeen":  "2025-08-04T22:29:25+00:00",
+                                                                         "uniqueReporters":  7
+                                                                     },
+                                                                     {
+                                                                         "id":  7,
+                                                                         "name":  "Phishing",
+                                                                         "count":  14,
+                                                                         "severity":  "high",
+                                                                         "firstSeen":  "2025-10-22T18:28:10+00:00",
+                                                                         "lastSeen":  "2025-08-01T11:18:35+00:00",
+                                                                         "uniqueReporters":  2
+                                                                     },
+                                                                     {
+                                                                         "id":  20,
+                                                                         "name":  "Exploited Host",
+                                                                         "count":  11,
+                                                                         "severity":  "high",
+                                                                         "firstSeen":  "2025-10-17T10:50:19+00:00",
+                                                                         "lastSeen":  "2025-08-10T10:37:04+00:00",
+                                                                         "uniqueReporters":  4
+                                                                     },
+                                                                     {
+                                                                         "id":  19,
+                                                                         "name":  "Bad Web Bot",
+                                                                         "count":  9,
+                                                                         "severity":  "medium",
+                                                                         "firstSeen":  "2025-10-05T02:09:09+00:00",
+                                                                         "lastSeen":  "2025-08-19T14:42:45+00:00",
+                                                                         "uniqueReporters":  3
+                                                                     },
+                                                                     {
+                                                                         "id":  16,
+                                                                         "name":  "SQL Injection",
+                                                                         "count":  2,
+                                                                         "severity":  "high",
+                                                                         "firstSeen":  "2025-09-27T00:10:30+00:00",
+                                                                         "lastSeen":  "2025-08-19T14:42:45+00:00",
+                                                                         "uniqueReporters":  2
+                                                                     },
+                                                                     {
+                                                                         "id":  4,
+                                                                         "name":  "DDoS Attack",
+                                                                         "count":  2,
+                                                                         "severity":  "high",
+                                                                         "firstSeen":  "2025-08-19T14:42:45+00:00",
+                                                                         "lastSeen":  "2025-08-16T10:01:53+00:00",
+                                                                         "uniqueReporters":  2
+                                                                     },
+                                                                     {
+                                                                         "id":  1,
+                                                                         "name":  "DNS Compromise",
+                                                                         "count":  1,
+                                                                         "severity":  "medium",
+                                                                         "firstSeen":  "2025-10-21T11:58:33+00:00",
+                                                                         "lastSeen":  "2025-10-21T11:58:33+00:00",
+                                                                         "uniqueReporters":  1
+                                                                     },
+                                                                     {
+                                                                         "id":  8,
+                                                                         "name":  "Fraud VoIP",
+                                                                         "count":  1,
+                                                                         "severity":  "low",
+                                                                         "firstSeen":  "2025-09-11T11:09:10+00:00",
+                                                                         "lastSeen":  "2025-09-11T11:09:10+00:00",
+                                                                         "uniqueReporters":  1
+                                                                     },
+                                                                     {
+                                                                         "id":  10,
+                                                                         "name":  "Web Spam",
+                                                                         "count":  1,
+                                                                         "severity":  "low",
+                                                                         "firstSeen":  "2025-08-19T14:42:45+00:00",
+                                                                         "lastSeen":  "2025-08-19T14:42:45+00:00",
+                                                                         "uniqueReporters":  1
+                                                                     },
+                                                                     {
+                                                                         "id":  12,
+                                                                         "name":  "Blog Spam",
+                                                                         "count":  1,
+                                                                         "severity":  "low",
+                                                                         "firstSeen":  "2025-08-19T14:42:45+00:00",
+                                                                         "lastSeen":  "2025-08-19T14:42:45+00:00",
+                                                                         "uniqueReporters":  1
+                                                                     },
+                                                                     {
+                                                                         "id":  2,
+                                                                         "name":  "DNS Poisoning",
+                                                                         "count":  1,
+                                                                         "severity":  "medium",
+                                                                         "firstSeen":  "2025-08-15T17:22:49+00:00",
+                                                                         "lastSeen":  "2025-08-15T17:22:49+00:00",
+                                                                         "uniqueReporters":  1
+                                                                     }
+                                                                 ],
+                                                  "categoryStats":  {
+                                                                        "high":  7,
+                                                                        "medium":  5,
+                                                                        "low":  3,
+                                                                        "total":  15,
+                                                                        "mostCommon":  [
+                                                                                           {
+                                                                                               "id":  18,
+                                                                                               "name":  "Brute-Force",
+                                                                                               "count":  98,
+                                                                                               "severity":  "high",
+                                                                                               "firstSeen":  "2025-10-22T21:01:07+00:00",
+                                                                                               "lastSeen":  "2025-08-04T17:01:35+00:00",
+                                                                                               "uniqueReporters":  29
+                                                                                           },
+                                                                                           {
+                                                                                               "id":  22,
+                                                                                               "name":  "SSH",
+                                                                                               "count":  70,
+                                                                                               "severity":  "medium",
+                                                                                               "firstSeen":  "2025-10-22T12:00:32+00:00",
+                                                                                               "lastSeen":  "2025-08-04T12:34:00+00:00",
+                                                                                               "uniqueReporters":  15
+                                                                                           },
+                                                                                           {
+                                                                                               "id":  14,
+                                                                                               "name":  "Port Scan",
+                                                                                               "count":  46,
+                                                                                               "severity":  "medium",
+                                                                                               "firstSeen":  "2025-10-22T21:01:07+00:00",
+                                                                                               "lastSeen":  "2025-08-10T10:37:04+00:00",
+                                                                                               "uniqueReporters":  14
+                                                                                           },
+                                                                                           {
+                                                                                               "id":  15,
+                                                                                               "name":  "Hacking",
+                                                                                               "count":  37,
+                                                                                               "severity":  "high",
+                                                                                               "firstSeen":  "2025-10-22T21:01:07+00:00",
+                                                                                               "lastSeen":  "2025-08-10T06:19:02+00:00",
+                                                                                               "uniqueReporters":  11
+                                                                                           },
+                                                                                           {
+                                                                                               "id":  21,
+                                                                                               "name":  "Web App Attack",
+                                                                                               "count":  17,
+                                                                                               "severity":  "high",
+                                                                                               "firstSeen":  "2025-10-19T03:35:50+00:00",
+                                                                                               "lastSeen":  "2025-08-04T22:29:25+00:00",
+                                                                                               "uniqueReporters":  7
+                                                                                           }
+                                                                                       ],
+                                                                        "bySeverity":  {
+                                                                                           "high":  [
+                                                                                                        {
+                                                                                                            "id":  18,
+                                                                                                            "name":  "Brute-Force",
+                                                                                                            "count":  98,
+                                                                                                            "severity":  "high",
+                                                                                                            "firstSeen":  "2025-10-22T21:01:07+00:00",
+                                                                                                            "lastSeen":  "2025-08-04T17:01:35+00:00",
+                                                                                                            "uniqueReporters":  29
+                                                                                                        },
+                                                                                                        {
+                                                                                                            "id":  15,
+                                                                                                            "name":  "Hacking",
+                                                                                                            "count":  37,
+                                                                                                            "severity":  "high",
+                                                                                                            "firstSeen":  "2025-10-22T21:01:07+00:00",
+                                                                                                            "lastSeen":  "2025-08-10T06:19:02+00:00",
+                                                                                                            "uniqueReporters":  11
+                                                                                                        },
+                                                                                                        {
+                                                                                                            "id":  21,
+                                                                                                            "name":  "Web App Attack",
+                                                                                                            "count":  17,
+                                                                                                            "severity":  "high",
+                                                                                                            "firstSeen":  "2025-10-19T03:35:50+00:00",
+                                                                                                            "lastSeen":  "2025-08-04T22:29:25+00:00",
+                                                                                                            "uniqueReporters":  7
+                                                                                                        },
+                                                                                                        {
+                                                                                                            "id":  7,
+                                                                                                            "name":  "Phishing",
+                                                                                                            "count":  14,
+                                                                                                            "severity":  "high",
+                                                                                                            "firstSeen":  "2025-10-22T18:28:10+00:00",
+                                                                                                            "lastSeen":  "2025-08-01T11:18:35+00:00",
+                                                                                                            "uniqueReporters":  2
+                                                                                                        },
+                                                                                                        {
+                                                                                                            "id":  20,
+                                                                                                            "name":  "Exploited Host",
+                                                                                                            "count":  11,
+                                                                                                            "severity":  "high",
+                                                                                                            "firstSeen":  "2025-10-17T10:50:19+00:00",
+                                                                                                            "lastSeen":  "2025-08-10T10:37:04+00:00",
+                                                                                                            "uniqueReporters":  4
+                                                                                                        },
+                                                                                                        {
+                                                                                                            "id":  16,
+                                                                                                            "name":  "SQL Injection",
+                                                                                                            "count":  2,                                                                                                            "severity":  "high",
+                                                                                                            "firstSeen":  "2025-09-27T00:10:30+00:00",
+                                                                                                            "lastSeen":  "2025-08-19T14:42:45+00:00",
+                                                                                                            "uniqueReporters":  2
+                                                                                                        },
+                                                                                                        {
+                                                                                                            "id":  4,
+                                                                                                            "name":  "DDoS Attack",
+                                                                                                            "count":  2,                                                                                                            "severity":  "high",
+                                                                                                            "firstSeen":  "2025-08-19T14:42:45+00:00",
+                                                                                                            "lastSeen":  "2025-08-16T10:01:53+00:00",
+                                                                                                            "uniqueReporters":  2
+                                                                                                        }
+                                                                                                    ],
+                                                                                           "medium":  [
+                                                                                                          {
+                                                                                                              "id":  22,                                                                                                              "name":  "SSH",
+                                                                                                              "count":  70,
+                                                                                                              "severity":  "medium",
+                                                                                                              "firstSeen":  "2025-10-22T12:00:32+00:00",
+                                                                                                              "lastSeen":  "2025-08-04T12:34:00+00:00",
+                                                                                                              "uniqueReporters":  15
+                                                                                                          },
+                                                                                                          {
+                                                                                                              "id":  14,                                                                                                              "name":  "Port Scan",
+                                                                                                              "count":  46,
+                                                                                                              "severity":  "medium",
+                                                                                                              "firstSeen":  "2025-10-22T21:01:07+00:00",
+                                                                                                              "lastSeen":  "2025-08-10T10:37:04+00:00",
+                                                                                                              "uniqueReporters":  14
+                                                                                                          },
+                                                                                                          {
+                                                                                                              "id":  19,                                                                                                              "name":  "Bad Web Bot",
+                                                                                                              "count":  9,
+                                                                                                              "severity":  "medium",
+                                                                                                              "firstSeen":  "2025-10-05T02:09:09+00:00",
+                                                                                                              "lastSeen":  "2025-08-19T14:42:45+00:00",
+                                                                                                              "uniqueReporters":  3
+                                                                                                          },
+                                                                                                          {
+                                                                                                              "id":  1,
+                                                                                                              "name":  "DNS Compromise",
+                                                                                                              "count":  1,
+                                                                                                              "severity":  "medium",
+                                                                                                              "firstSeen":  "2025-10-21T11:58:33+00:00",
+                                                                                                              "lastSeen":  "2025-10-21T11:58:33+00:00",
+                                                                                                              "uniqueReporters":  1
+                                                                                                          },
+                                                                                                          {
+                                                                                                              "id":  2,
+                                                                                                              "name":  "DNS Poisoning",
+                                                                                                              "count":  1,
+                                                                                                              "severity":  "medium",
+                                                                                                              "firstSeen":  "2025-08-15T17:22:49+00:00",
+                                                                                                              "lastSeen":  "2025-08-15T17:22:49+00:00",
+                                                                                                              "uniqueReporters":  1
+                                                                                                          }
+                                                                                                      ],
+                                                                                           "low":  [
+                                                                                                       {
+                                                                                                           "id":  8,
+                                                                                                           "name":  "Fraud VoIP",
+                                                                                                           "count":  1,
+                                                                                                           "severity":  "low",
+                                                                                                           "firstSeen":  "2025-09-11T11:09:10+00:00",
+                                                                                                           "lastSeen":  "2025-09-11T11:09:10+00:00",
+                                                                                                           "uniqueReporters":  1
+                                                                                                       },
+                                                                                                       {
+                                                                                                           "id":  10,
+                                                                                                           "name":  "Web Spam",
+                                                                                                           "count":  1,
+                                                                                                           "severity":  "low",
+                                                                                                           "firstSeen":  "2025-08-19T14:42:45+00:00",
+                                                                                                           "lastSeen":  "2025-08-19T14:42:45+00:00",
+                                                                                                           "uniqueReporters":  1
+                                                                                                       },
+                                                                                                       {
+                                                                                                           "id":  12,
+                                                                                                           "name":  "Blog Spam",
+                                                                                                           "count":  1,
+                                                                                                           "severity":  "low",
+                                                                                                           "firstSeen":  "2025-08-19T14:42:45+00:00",
+                                                                                                           "lastSeen":  "2025-08-19T14:42:45+00:00",
+                                                                                                           "uniqueReporters":  1
+                                                                                                       }
+                                                                                                   ]
+                                                                                       }
+                                                                    },
+                                                  "reportsByDate":  {
+                                                                        "2025-10-22":  8,
+                                                                        "2025-10-21":  2,
+                                                                        "2025-10-20":  5,
+                                                                        "2025-10-19":  1,
+                                                                        "2025-10-18":  1,
+                                                                        "2025-10-17":  3,
+                                                                        "2025-10-15":  1,
+                                                                        "2025-10-14":  1,
+                                                                        "2025-10-13":  6,
+                                                                        "2025-10-12":  1,
+                                                                        "2025-10-11":  3,
+                                                                        "2025-10-10":  2,
+                                                                        "2025-10-09":  5,
+                                                                        "2025-10-08":  6,
+                                                                        "2025-10-07":  2,
+                                                                        "2025-10-06":  1,
+                                                                        "2025-10-05":  1,
+                                                                        "2025-10-04":  1,
+                                                                        "2025-10-03":  3,
+                                                                        "2025-10-02":  2,
+                                                                        "2025-10-01":  2,
+                                                                        "2025-09-30":  2,
+                                                                        "2025-09-29":  1,
+                                                                        "2025-09-28":  2,
+                                                                        "2025-09-27":  2,
+                                                                        "2025-09-26":  1,
+                                                                        "2025-09-25":  2,
+                                                                        "2025-09-24":  1,
+                                                                        "2025-09-23":  6,
+                                                                        "2025-09-22":  2,
+                                                                        "2025-09-21":  1,
+                                                                        "2025-09-20":  1,
+                                                                        "2025-09-19":  1,
+                                                                        "2025-09-18":  1,
+                                                                        "2025-09-17":  1,
+                                                                        "2025-09-16":  1,
+                                                                        "2025-09-15":  8,
+                                                                        "2025-09-14":  1,
+                                                                        "2025-09-13":  1,
+                                                                        "2025-09-12":  4,
+                                                                        "2025-09-11":  2,
+                                                                        "2025-09-10":  4,
+                                                                        "2025-09-09":  1,
+                                                                        "2025-09-08":  1,
+                                                                        "2025-09-07":  1,
+                                                                        "2025-09-06":  1,
+                                                                        "2025-09-05":  3,
+                                                                        "2025-09-01":  1,
+                                                                        "2025-08-30":  1,
+                                                                        "2025-08-28":  1,
+                                                                        "2025-08-27":  6,
+                                                                        "2025-08-26":  1,
+                                                                        "2025-08-25":  1,
+                                                                        "2025-08-22":  6,
+                                                                        "2025-08-21":  2,
+                                                                        "2025-08-20":  5,
+                                                                        "2025-08-19":  2,
+                                                                        "2025-08-18":  5,
+                                                                        "2025-08-17":  1,
+                                                                        "2025-08-16":  1,
+                                                                        "2025-08-15":  1,
+                                                                        "2025-08-14":  3,
+                                                                        "2025-08-13":  1,
+                                                                        "2025-08-12":  1,
+                                                                        "2025-08-11":  5,
+                                                                        "2025-08-10":  2,
+                                                                        "2025-08-05":  1,
+                                                                        "2025-08-04":  4,
+                                                                        "2025-08-01":  1
+                                                                    },
+                                                  "totalReportsAnalyzed":  161,
+                                                  "queryParams":  {
+                                                                      "maxAgeInDays":  90,
+                                                                      "verbose":  true,
+                                                                      "timestamp":  "2025-10-24T02:23:05.609Z"
+                                                                  }
+                                              }
+                              },
+                 "summary":  {
+                                 "risk_score":  null,
+                                 "risk_level":  "high",
+                                 "threats_detected":  161
+                             }
+             }
+}
+
+5. Testing validation - missing entity (should fail with 400):
+Status: 400
+{
+    "success":  false,
+    "message":  "Parámetros de entrada inválidos. Se requiere \"type\" (domain, email, ip) y \"entity\".",
+    "received":  {
+                     "type":  "domain"
+                 }
+}
+
+============================================
+API Testing Complete!

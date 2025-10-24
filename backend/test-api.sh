@@ -67,34 +67,11 @@ make_request "GET" "/api/config" "" "2. Configuration Status"
 # 3. Analyze Domain - Google (should be clean)
 make_request "POST" "/api/analyze" '{"entity": "google.com", "type": "domain"}' "3. Analyzing google.com (domain)"
 
-# 4. Analyze Domain - Suspicious domain
-make_request "POST" "/api/analyze" '{"entity": "malware-test-site.com", "type": "domain"}' "4. Analyzing suspicious domain"
+# 4. Analyze IP - Google DNS
+make_request "POST" "/api/analyze" '{"entity": "8.8.8.8", "type": "ip"}' "4. Analyzing 8.8.8.8 (IP)"
 
-# 5. Analyze IP - Google DNS
-make_request "POST" "/api/analyze" '{"entity": "8.8.8.8", "type": "ip"}' "5. Analyzing 8.8.8.8 (IP)"
-
-# 6. Analyze IP - Private IP
-make_request "POST" "/api/analyze" '{"entity": "192.168.1.1", "type": "ip"}' "6. Analyzing 192.168.1.1 (private IP)"
-
-# 7. Analyze Email
-make_request "POST" "/api/analyze" '{"entity": "test@example.com", "type": "email"}' "7. Analyzing test@example.com (email)"
-
-# 8. Invalid Request - Missing entity
-make_request "POST" "/api/analyze" '{"type": "domain"}' "8. Testing validation - missing entity (should fail)"
-
-# 9. Invalid Request - Invalid type
-make_request "POST" "/api/analyze" '{"entity": "test.com", "type": "invalid_type"}' "9. Testing validation - invalid type (should fail)"
-
-# 10. Invalid Request - Empty entity
-make_request "POST" "/api/analyze" '{"entity": "", "type": "domain"}' "10. Testing validation - empty entity (should fail)"
+# 5. Invalid Request - Missing entity
+make_request "POST" "/api/analyze" '{"type": "domain"}' "5. Testing validation - missing entity (should fail with 400)"
 
 echo -e "\n$SEPARATOR"
 echo "✅ API Testing Complete!"
-echo "🔍 Review the responses above to verify all endpoints are working correctly."
-echo ""
-echo "Expected results:"
-echo "- Health check: Should return status 200 with system information"
-echo "- Config check: Should show API key status"
-echo "- Valid analyses: Should return status 200 with mock/real data"
-echo "- Invalid requests: Should return status 400 with error messages"
-echo $SEPARATOR

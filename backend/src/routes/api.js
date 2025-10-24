@@ -1,51 +1,51 @@
 // backend/src/routes/api.js (CORREGIDO)
 
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const securityController = require('../controllers/securityController');
-const axios = require('axios');
+const securityController = require("../controllers/securityController");
+const axios = require("axios");
 
 // --- CAMBIO CLAVE: Importamos redisClient desde su propio módulo ---
-const { redisClient } = require('../config/redisClient');
-
-
+const { redisClient } = require("../config/redisClient");
 
 /**
  * @route   GET /api/health
  * @desc    Health check endpoint
  */
-router.get('/health', securityController.healthCheck);
+router.get("/health", securityController.healthCheck);
 
 /**
  * @route   GET /api/config
  * @desc    Configuration status endpoint
  */
-router.get('/config', securityController.getConfig);
+router.get("/config", securityController.getConfig);
 
 /**
  * @route   POST /api/reports
  * @desc    Obtiene reportes detallados de una IP usando el endpoint REPORTS de AbuseIPDB
  */
-router.post('/reports', securityController.getDetailedReports);
+router.post("/reports", securityController.getDetailedReports);
 
 /**
  * @route   POST /api/analyze
  * @desc    Analiza una entidad (dominio, email o IP) buscando métricas de seguridad.
  */
-router.post('/analyze', async (req, res) => {
+router.post("/analyze", async (req, res) => {
   //... (El resto del código de esta ruta permanece exactamente igual)
   console.log("Cuerpo de la petición recibido:", req.body);
-  const { type, value } = req.body;
+  const { type, entity } = req.body; // CAMBIO: Usamos 'entity' en lugar de 'value'
 
-  if (!type ||!value ||!['domain', 'email', 'ip'].includes(type)) {
-    return res.status(400).json({ 
+  if (!type || !entity || !["domain", "email", "ip"].includes(type)) {
+    // CAMBIO: Validamos 'entity' y corregimos el mensaje de error
+    return res.status(400).json({
       success: false,
-      message: 'Parámetros de entrada inválidos. Se requiere "type" (domain, email, ip) y "value".',
-      received: req.body
+      message:
+        'Parámetros de entrada inválidos. Se requiere "type" (domain, email, ip) y "entity".',
+      received: req.body,
     });
   }
 
-  const cacheKey = `security-scan:${type}:${value}`;
+  const cacheKey = `security-scan:${type}:${entity}`; // CAMBIO: Usamos 'entity' para la clave de caché
   const CACHE_TTL = parseInt(process.env.CACHE_TTL_SECONDS, 10) || 3600;
 
   try {
@@ -54,39 +54,49 @@ router.post('/analyze', async (req, res) => {
     if (cachedResult) {
       console.log(`[Cache Hit] para la clave: ${cacheKey}`);
       return res.json({
-        query: value,
+        query: entity, // CAMBIO: Devolvemos 'entity'
         type: type,
         cached: true,
-        data: JSON.parse(cachedResult)
+        data: JSON.parse(cachedResult),
       });
     }
 
-    console.log(`[Cache Miss] para la clave: ${cacheKey}. Obteniendo datos frescos...`);
-    
-    const freshData = await securityController.analyze(type, value);
+    console.log(
+      `[Cache Miss] para la clave: ${cacheKey}. Obteniendo datos frescos...`
+    );
+
+    const freshData = await securityController.analyze(type, entity); // CAMBIO: Pasamos 'entity' al controlador
 
     await redisClient.set(cacheKey, JSON.stringify(freshData), {
-      EX: CACHE_TTL
+      EX: CACHE_TTL,
     });
-    console.log(`Cache poblado para la clave: ${cacheKey} con TTL de ${CACHE_TTL} segundos.`);
+    console.log(
+      `Cache poblado para la clave: ${cacheKey} con TTL de ${CACHE_TTL} segundos.`
+    );
 
     return res.json({
-      query: value,
+      query: entity, // CAMBIO: Devolvemos 'entity'
       type: type,
       cached: false,
-      data: freshData
+      data: freshData,
     });
-
   } catch (error) {
-    console.error(`Error procesando la petición para ${type} ${value}:`, error);
-    
+    console.error(
+      `Error procesando la petición para ${type} ${entity}:`,
+      error
+    ); // CAMBIO: Usamos 'entity' en el log
+
     if (error.isAxiosError) {
-        const status = error.response? error.response.status : 500;
-        const message = error.response? error.response.data : 'Error en la comunicación con el servicio externo.';
-        return res.status(status).json({ error: 'Error en servicio externo', details: message });
+      const status = error.response ? error.response.status : 500;
+      const message = error.response
+        ? error.response.data
+        : "Error en la comunicación con el servicio externo.";
+      return res
+        .status(status)
+        .json({ error: "Error en servicio externo", details: message });
     }
-    
-    return res.status(500).json({ error: 'Error interno del servidor.' });
+
+    return res.status(500).json({ error: "Error interno del servidor." });
   }
 });
 

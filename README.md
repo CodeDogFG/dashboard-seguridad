@@ -136,8 +136,9 @@ LOG_LEVEL=info
 | **AbuseIPDB** | [abuseipdb.com/api](https://www.abuseipdb.com/api) | Base de datos de IPs maliciosas |
 
 ### 3. Configurar Redis (Opcional)
-
 ```bash
+#Instalar Docker
+
 # Windows (con Chocolatey)
 choco install redis-64
 
