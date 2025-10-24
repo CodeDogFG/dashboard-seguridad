@@ -200,7 +200,7 @@ const categoryChartOptions = {
   maintainAspectRatio: false,
   plugins: {
     legend: {
-      display: false // No mostrar leyenda para gráfico de barras
+      display: true // Mostrar leyenda para gráfico de barras
     },
     title: {
       display: true,
@@ -427,7 +427,7 @@ $watch(successMessage, clearMessages)
                 class="risk-badge" 
                 :style="{ backgroundColor: getRiskColor(result.riskScore) }"
               >
-                {{ result.riskScore }}
+                {{ isNaN(result.riskScore) ? 'N/A' : result.riskScore }}
               </span>
             </div>
             <div class="result-value">{{ result.value }}</div>

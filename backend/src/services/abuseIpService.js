@@ -66,13 +66,13 @@ class AbuseIpService {
       };
       
       // Calcular riesgo basado en porcentaje de confianza de abuso y reportes
-      const riskScore = this.calculateRiskScore(data.abuseConfidencePercentage, data.totalReports);
+      const riskScore = this.calculateRiskScore(data.abuseConfidenceScore, data.totalReports);
       
       const result = {
         service: 'AbuseIPDB',
         status: 'success',
         ip: ip,
-        abuseConfidencePercentage: data.abuseConfidencePercentage,
+        abuseConfidencePercentage: data.abuseConfidenceScore,
         countryCode: data.countryCode,
         countryName: data.countryName || '',
         usageType: data.usageType,
